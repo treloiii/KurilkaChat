@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent">
+
+    <ScrollView
+        android:id="@+id/scroll"
+        android:layout_width="fill_parent"
+        android:layout_height="0dip"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:id="@+id/scroll_pane"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+<!--            <TextView-->
+<!--                android:id="@+id/textView"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:text="LESHA\nAqew"-->
+<!--                android:layout_gravity="right"-->
+<!--                android:paddingTop="2dp"-->
+<!--                android:paddingHorizontal="15dp"-->
+<!--                android:background="@drawable/back"/>-->
+        </LinearLayout>
+    </ScrollView>
+
+    <TextView
+        android:id="@+id/sostoyanie"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textAlignment="center"
+        android:visibility="visible"
+        />
+
+    <LinearLayout
+        android:id="@+id/linearLayout1"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/input_back"
+        android:baselineAligned="true"
+        android:orientation="horizontal"
+        android:paddingLeft="5dp"
+        android:paddingRight="5dp"
+        android:paddingBottom="15dp">
+
+        <EditText
+            android:id="@+id/textInput"
+            android:layout_width="0dip"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColorHighlight="#000000"
+            android:textColorLink="#006B5050"
+            android:backgroundTint="@color/colorPrimaryDark"
+            android:hint="@string/put"
+            >
+
+            <requestFocus></requestFocus>
+        </EditText>
+
+        <Button
+            android:id="@+id/btnSend"
+            android:layout_width="45dp"
+            android:layout_height="45dp"
+            android:background="@drawable/web_hi_res_512"
+            android:layout_marginTop="2dp"></Button>
+
+    </LinearLayout>
+</LinearLayout>
