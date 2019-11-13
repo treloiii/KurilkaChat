@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="colorPrimary">#008577</color>
-    <color name="colorPrimaryDark">#00574B</color>
+    <color name="colorPrimaryDark">#444444</color>
     <color name="colorAccent">#D81B60</color>
-    <color name="nickname_color">#0A7C71</color>
-    <color name="message_time">#59414B48</color>
+    <color name="nickname_color">#0186BD</color>
+    <color name="message_time">#2196F3</color>
+    <color name="white">#ffffff</color>
+    <color name="background_mes">#222222</color>
 </resources>

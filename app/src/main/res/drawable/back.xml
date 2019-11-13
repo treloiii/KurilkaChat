@@ -8,10 +8,10 @@
     </corners>
     <stroke
         android:width="9dp"
-        android:color="#808080">
+        android:color="#444444">
     </stroke>
     <solid
-        android:color="#808080">
+        android:color="#444444">
     </solid>
     <padding
         android:left="1dp"

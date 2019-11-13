@@ -16,6 +16,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -85,15 +86,19 @@ public class MainActivity extends Activity {
     private WebsocketClientEndpoint clientEndPoint;
     private OkHttpClient client;
     private Button btnSend;
-    private TextView sostoyanie;
+    private TextView sostoyanie,navbar;
     private ScrollView scroll;
     private EditText textInput;
-    private final  String NICKNAME="Гришин";
+    protected static final  String NICKNAME="ПоЖиЛоЙйй";
+    //protected static final  String NICKNAME="Гришин";
     private IWebSocketConnectionHandler wsh;
     WebSocketClient c = null;
     private final WebSocketConnection  socket = new WebSocketConnection();
     public static final MediaType MEDIA_TYPE = MediaType.parse("application/json");
     private MessageServerResponse[] messages;
+
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -105,7 +110,7 @@ public class MainActivity extends Activity {
             StrictMode.setThreadPolicy(policy);
         }
 
-
+        navbar=findViewById(R.id.navbar);
         scroll_pane = findViewById(R.id.scroll_pane);
         btnSend=findViewById(R.id.btnSend);
         textInput=findViewById(R.id.textInput);
@@ -150,6 +155,9 @@ public class MainActivity extends Activity {
         };
         textInput.addTextChangedListener(tw);
 
+        Intent stopIntent=new Intent(this,BackgroundService.class);
+        stopIntent.setAction("stop");
+        startService(stopIntent);
 
 
 
@@ -158,7 +166,8 @@ public class MainActivity extends Activity {
 
                 @Override
                 public void onConnect(ConnectionResponse response) {
-                    showNotif("Ну ты лох","Соединение установлено");
+                    navbar.setText(NICKNAME.concat(":  Online"));
+                    //showNotif("Ну ты лох","Соединение установлено");
 
                 }
 
@@ -188,6 +197,7 @@ public class MainActivity extends Activity {
                 @Override
                 public void onClose(int code, String reason) {
                     //showNotif(reason,"Соединение оборвано");
+                    navbar.setText(NICKNAME.concat(":  Offline"));
                     new android.os.Handler().postDelayed(
                             () -> {
                                 try {
@@ -201,35 +211,36 @@ public class MainActivity extends Activity {
 
                 @Override
                 public void onMessage(String payload) {
-                    if(!payload.split("[:]")[1].equals(" 6a5df9fcac0cfa3b9b264f372dae311d")&&!payload.split("[:]")[1].equals(" 7f021a1415b86f2d013b2618fb31ae53")&&!payload.split("[:]")[1].equals(" b640a0ce465fa2a4150c36b305c1c11b")&&!payload.split("[:]")[1].equals(" 9d634e1a156dc0c1611eb4c3cff57276")&&!payload.split("[:]")[1].equals(" pong")) {
-                        newMessage(scroll_pane,payload.split("[:]")[1],payload.split("[:]")[0],nowAtime(), payload.split("[:]")[0].equals(NICKNAME),false);
-                    }
-                    else if(payload.split("[:]")[1].equals(" 7f021a1415b86f2d013b2618fb31ae53")){
-                        //TODO end typing
-                        sostoyanie.setText("");
-                    }
-                    else if(payload.split("[:]")[1].equals(" b640a0ce465fa2a4150c36b305c1c11b")){
-                        //TODO user connected
-                        if(!payload.split("[:]")[0].equals(NICKNAME)) {
-                            sostoyanie.setText(payload.split("[:]")[0] + " подключился");
+                    try {
+                        if (!payload.split("[:]")[1].equals(" 6a5df9fcac0cfa3b9b264f372dae311d") && !payload.split("[:]")[1].equals(" 7f021a1415b86f2d013b2618fb31ae53") && !payload.split("[:]")[1].equals(" b640a0ce465fa2a4150c36b305c1c11b") && !payload.split("[:]")[1].equals(" 9d634e1a156dc0c1611eb4c3cff57276") && !payload.split("[:]")[1].equals(" pong")&&!payload.split("[:]")[1].equals("")) {
+                            newMessage(scroll_pane, payload.split("[:]")[1], payload.split("[:]")[0], nowAtime(), payload.split("[:]")[0].equals(NICKNAME), false);
+                        } else if (payload.split("[:]")[1].equals(" 7f021a1415b86f2d013b2618fb31ae53")) {
+                            //TODO end typing
+                            sostoyanie.setText("");
+                        } else if (payload.split("[:]")[1].equals(" b640a0ce465fa2a4150c36b305c1c11b")) {
+                            //TODO user connected
+                            if (!payload.split("[:]")[0].equals(NICKNAME)) {
+                                sostoyanie.setText(payload.split("[:]")[0] + " подключился");
+                                new android.os.Handler().postDelayed(
+                                        () -> sostoyanie.setText(""),
+                                        1000);
+                            }
+
+                        } else if (payload.split("[:]")[1].equals(" 9d634e1a156dc0c1611eb4c3cff57276")) {
+                            //TODO user disconnected
+                            sostoyanie.setText(payload.split("[:]")[0] + " отключился");
                             new android.os.Handler().postDelayed(
                                     () -> sostoyanie.setText(""),
                                     1000);
+                        } else if (payload.split("[:]")[1].equals(" 6a5df9fcac0cfa3b9b264f372dae311d")) {
+                            //TODO typing
+                            if (!payload.split("[:]")[0].equals(NICKNAME)) {
+                                sostoyanie.setText(payload.split("[:]")[0] + " печатает...");
+                            }
                         }
+                    }
+                    catch (Exception e){
 
-                    }
-                    else if(payload.split("[:]")[1].equals(" 9d634e1a156dc0c1611eb4c3cff57276")){
-                        //TODO user disconnected
-                        sostoyanie.setText(payload.split("[:]")[0]+" отключился");
-                        new android.os.Handler().postDelayed(
-                                () -> sostoyanie.setText(""),
-                                1000);
-                    }
-                    else if(payload.split("[:]")[1].equals(" 6a5df9fcac0cfa3b9b264f372dae311d")){
-                        //TODO typing
-                        if(!payload.split("[:]")[0].equals(NICKNAME)) {
-                            sostoyanie.setText(payload.split("[:]")[0] + " печатает...");
-                        }
                     }
 
                 }
@@ -266,7 +277,7 @@ public class MainActivity extends Activity {
             });
 
 
-            startForegroundService(new Intent(this,BackgroundService.class));
+
         } catch(WebSocketException wse) {
             Log.d("WEBSOCKETS", wse.getMessage());
         }
@@ -314,6 +325,14 @@ public class MainActivity extends Activity {
     }
 
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Log.d("destroy","STOP");
+        Intent startIntent=new Intent(this,BackgroundService.class);
+        startIntent.setAction("start");
+        startForegroundService(startIntent);
+    }
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
@@ -326,6 +345,7 @@ public class MainActivity extends Activity {
        handler.post(new Runnable() {
            @Override
            public void run() {
+               scroll_pane.removeAllViews();
                final Request request = new Request.Builder()
                        .url("http://kurilka.std-763.ist.mospolytech.ru/getMessages.php")
                        .get()
@@ -379,10 +399,10 @@ public class MainActivity extends Activity {
         styled_message.setSpan(new AlignmentSpan.Standard(Layout.Alignment.ALIGN_OPPOSITE),id.length()+6+message.length(),styled_message.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         styled_message.setSpan(new ForegroundColorSpan(getColor(R.color.message_time)),id.length()+6+message.length(),styled_message.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         text.setText(styled_message);
-
         text.setLayoutParams(params);
         text.setBackground(getDrawable(R.drawable.back));
         text.setPadding(15,0,15,0);
+        text.setTextColor(getResources().getColor(R.color.white));
         ll.addView(text);
         scrollDown();
         if(!isMy&&!id.equals("")&&!isFirstLoad){
@@ -395,6 +415,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onResume() {
+        scroll_pane.removeAllViews();
         loadOnStart();
         super.onResume();
     }

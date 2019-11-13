@@ -27,13 +27,16 @@ public class NotificationHelper {
      * Create and push the notification
      */
     public Notification createNotification(String title, String message) {
-
+        Intent notificationIntent = new Intent(mContext,MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(mContext, 0, notificationIntent, 0);
 
         mBuilder = new NotificationCompat.Builder(mContext);
         mBuilder.setSmallIcon(R.drawable.pachka);
         mBuilder.setContentTitle(title)
+                .setContentIntent(pendingIntent)
                 .setContentText(message)
                 .setAutoCancel(false)
+                .setContentIntent(pendingIntent)
                 .setSound(Settings.System.DEFAULT_NOTIFICATION_URI);
         mNotificationManager = (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
 
