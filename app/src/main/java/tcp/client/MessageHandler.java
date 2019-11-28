@@ -2,5 +2,5 @@ package tcp.client;
 
 public interface MessageHandler {
 
-    void onMessage(String s);
+    void onMessage(Message s);
 }

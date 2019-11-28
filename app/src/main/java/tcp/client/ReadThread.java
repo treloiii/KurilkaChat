@@ -39,7 +39,7 @@ public class ReadThread extends Thread {
             try{
                 Message messageFromServer =gson.fromJson(reader.readLine(),Message.class);
                 System.out.println(messageFromServer.toString());
-                callback.onMessage(messageFromServer.toString());
+                callback.onMessage(messageFromServer);
                 if(messageFromServer.text.equals("disconnected"))
                     this.client.disconnect();
             }

@@ -96,12 +96,12 @@ public class MainActivity extends Activity implements MessageHandler {
     private EditText textInput;
     protected static final  String NICKNAME="ПоЖиЛоЙйй";
     //protected static final  String NICKNAME="Гришин";
-    private IWebSocketConnectionHandler wsh;
+    //private IWebSocketConnectionHandler wsh;
     WebSocketClient c = null;
     private final WebSocketConnection  socket = new WebSocketConnection();
     public static final MediaType MEDIA_TYPE = MediaType.parse("application/json");
     private MessageServerResponse[] messages;
-
+    final Client client1=new Client("kurilkachat.trelloiii.site",8091,NICKNAME);
 
     private Handler mHandler;
 
@@ -126,11 +126,14 @@ public class MainActivity extends Activity implements MessageHandler {
         sostoyanie=findViewById(R.id.sostoyanie);
         client = new OkHttpClient();
 
+
+        this.connectToServer();
+
         textInput.setOnEditorActionListener(new EditText.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
                 if(!textInput.getText().toString().equals("")) {
-                    socket.sendMessage("{\"id\":\"" + NICKNAME + "\",\"message\":\"" + textInput.getText().toString() + "\"}");
+                  //  socket.sendMessage("{\"id\":\"" + NICKNAME + "\",\"message\":\"" + textInput.getText().toString() + "\"}");
                     textInput.setText("");
                 }
                 return true;
@@ -147,6 +150,7 @@ public class MainActivity extends Activity implements MessageHandler {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
+                client1.sendMessage("text change","textInput");
 //                System.out.println(s);
 //                socket.sendMessage("{\"id\":\""+NICKNAME+"\",\"message\":\"6a5df9fcac0cfa3b9b264f372dae311d\"}");
 
@@ -154,6 +158,9 @@ public class MainActivity extends Activity implements MessageHandler {
 
             @Override
             public void afterTextChanged(Editable s) {
+                new android.os.Handler().postDelayed(()->{
+                    client1.sendMessage("text stop","textOver");
+                },1000);
 //                System.out.println("перестал печатать");
 //                //socket.sendMessage("{\"id\":\""+NICKNAME+"\",\"message\":\"7f021a1415b86f2d013b2618fb31ae53\"}");
 //                new android.os.Handler().postDelayed(
@@ -167,84 +174,47 @@ public class MainActivity extends Activity implements MessageHandler {
             @Override
             public void handleMessage(Message message) {
                 System.out.println(message.obj.toString());
-                Gson gson=new Gson();
-                tcp.client.Message msg =gson.fromJson(message.obj.toString(), tcp.client.Message.class);
-                newMessage(scroll_pane,msg.getText(),NICKNAME,"12:15",true,false);
-                // This is where you do your work in the UI thread.
-                // Your worker tells you in the message what to do.
+                tcp.client.Message msg=(tcp.client.Message) message.obj;
+                if(msg.getTextAdmin().equals("textInput"))
+                    setTyping(msg.getName());
+                else if(msg.getTextAdmin().equals("textOver"))
+                    setUnTyping();
+                else
+                    newMessage(scroll_pane,msg.getText(),msg.getName(),nowAtime(),msg.getName().equals(NICKNAME),false);
             }
         };
 
         Intent stopIntent=new Intent(this,BackgroundService.class);
         stopIntent.setAction("stop");
         startService(stopIntent);
-        final Client client1=new Client("kurilkachat.trelloiii.site",8091,NICKNAME);
-        try {
-            Thread a = new Thread(() -> {
-                client1.listenToServer(this);
-            });
-            a.start();
-            //a.join();
-        }
-        catch (Exception e){
-            e.printStackTrace();
-        }
+
+
+
 
 
 
 
         btnSend.setOnClickListener(v -> {
-            client1.sendMessage(textInput.getText().toString());
-//            if(!textInput.getText().toString().equals("")) {
-//                socket.sendMessage("{\"id\":\"" + NICKNAME + "\",\"message\":\"" + textInput.getText().toString() + "\"}");
-//                System.out.println(textInput.getText().toString());
-//                JSONObject postdata = new JSONObject();
-//                try {
-//                    postdata.put("id",  NICKNAME);
-//                    postdata.put("message", textInput.getText().toString());
-//                } catch(JSONException e){
-//                    // TODO Auto-generated catch block
-//                    e.printStackTrace();
-//                }
-//                new Thread(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        final Request request = new Request.Builder()
-//                                .url("http://kurilka.std-763.ist.mospolytech.ru/post.php?id="+NICKNAME+"&message="+textInput.getText().toString())
-//                                .get()
-//                                .addHeader("Content-Type", "application/json")
-//                                .addHeader("cache-control", "no-cache")
-//                                .build();
-//                        try {
-//                            Gson gson=new Gson();
-//                            Response response=client.newCall(request).execute();
-//                            MessageServerResponse[] message=gson.fromJson(response.body().string(),MessageServerResponse[].class);
-//                            //MessageServerResponse message=gson.fromJson(response.body().string(),MessageServerResponse.class);
-//                            System.out.println(message[0].getMessage());
-//                        } catch (IOException e) {
-//                            e.printStackTrace();
-//                        }
-//                    }
-//                }).start();
-//                textInput.setText("");
-//            }
+           // client1.sendMessage(textInput.getText().toString());
+            if(!textInput.getText().toString().equals("")) {
+                client1.sendMessage(textInput.getText().toString(),"msg");
+//                this.postMessageToDb();
+                textInput.setText("");
+            }
 
         });
-
-
-
-
-
     }
 
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        Log.d("destroy","STOP");
-        Intent startIntent=new Intent(this,BackgroundService.class);
-        startIntent.setAction("start");
-        startForegroundService(startIntent);
+        client1.disconnect();
+
+//        Log.d("destroy","STOP");
+//        Intent startIntent=new Intent(this,BackgroundService.class);
+//        startIntent.setAction("start");
+//        startForegroundService(startIntent);
     }
 
     @Override
@@ -349,12 +319,67 @@ public class MainActivity extends Activity implements MessageHandler {
     }
 
     @Override
-    public void onMessage(String s) {
+    public void onMessage(tcp.client.Message s) {
         System.out.println("message income");
-        Message message = mHandler.obtainMessage(0,s);
-        message.sendToTarget();
+        Message message;
+        if(s.getTextAdmin()!=null&&!s.getTextAdmin().equals("pong")) {
+            message = mHandler.obtainMessage(0, s);
+            message.sendToTarget();
+        }
+
+    }
 
 
+    private void postMessageToDb(){
+        JSONObject postdata = new JSONObject();
+            try {
+                postdata.put("id",  NICKNAME);
+                postdata.put("message", textInput.getText().toString());
+            } catch(JSONException e){
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    final Request request = new Request.Builder()
+                            .url("http://kurilka.std-763.ist.mospolytech.ru/post.php?id="+NICKNAME+"&message="+textInput.getText().toString())
+                            .get()
+                            .addHeader("Content-Type", "application/json")
+                            .addHeader("cache-control", "no-cache")
+                            .build();
+                    try {
+                        Gson gson=new Gson();
+                        Response response=client.newCall(request).execute();
+                        MessageServerResponse[] message=gson.fromJson(response.body().string(),MessageServerResponse[].class);
+                        //MessageServerResponse message=gson.fromJson(response.body().string(),MessageServerResponse.class);
+                        System.out.println(message[0].getMessage());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }).start();
+    }
 
+
+    private void connectToServer(){
+        try {
+            Thread a = new Thread(() -> {
+                client1.listenToServer(this);
+            });
+            a.start();
+            //a.join();
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    private void setTyping(String nickname){
+        sostoyanie.setText(String.format("%s печатает...", nickname));
+        new android.os.Handler().postDelayed(() -> sostoyanie.setText(""), 1000);
+    }
+    private void setUnTyping(){
+        sostoyanie.setText("");
     }
 }
