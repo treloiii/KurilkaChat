@@ -23,6 +23,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
+import android.os.Message;
 import android.os.StrictMode;
 import android.text.Editable;
 import android.text.Html;
@@ -50,6 +52,7 @@ import org.java_websocket.handshake.ServerHandshake;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.Console;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -79,8 +82,10 @@ import okio.ByteString;
 import retrofit2.Call;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
+import tcp.client.Client;
+import tcp.client.MessageHandler;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements MessageHandler {
 
     private LinearLayout scroll_pane;
     private WebsocketClientEndpoint clientEndPoint;
@@ -96,6 +101,9 @@ public class MainActivity extends Activity {
     private final WebSocketConnection  socket = new WebSocketConnection();
     public static final MediaType MEDIA_TYPE = MediaType.parse("application/json");
     private MessageServerResponse[] messages;
+
+
+    private Handler mHandler;
 
 
 
@@ -139,182 +147,87 @@ public class MainActivity extends Activity {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                System.out.println(s);
-                socket.sendMessage("{\"id\":\""+NICKNAME+"\",\"message\":\"6a5df9fcac0cfa3b9b264f372dae311d\"}");
+//                System.out.println(s);
+//                socket.sendMessage("{\"id\":\""+NICKNAME+"\",\"message\":\"6a5df9fcac0cfa3b9b264f372dae311d\"}");
 
             }
 
             @Override
             public void afterTextChanged(Editable s) {
-                System.out.println("перестал печатать");
-                //socket.sendMessage("{\"id\":\""+NICKNAME+"\",\"message\":\"7f021a1415b86f2d013b2618fb31ae53\"}");
-                new android.os.Handler().postDelayed(
-                        () -> {socket.sendMessage("{\"id\":\""+NICKNAME+"\",\"message\":\"7f021a1415b86f2d013b2618fb31ae53\"}");},
-                        1000);
+//                System.out.println("перестал печатать");
+//                //socket.sendMessage("{\"id\":\""+NICKNAME+"\",\"message\":\"7f021a1415b86f2d013b2618fb31ae53\"}");
+//                new android.os.Handler().postDelayed(
+//                        () -> {socket.sendMessage("{\"id\":\""+NICKNAME+"\",\"message\":\"7f021a1415b86f2d013b2618fb31ae53\"}");},
+//                        1000);
             }
         };
         textInput.addTextChangedListener(tw);
 
+        mHandler = new Handler(Looper.getMainLooper()) {
+            @Override
+            public void handleMessage(Message message) {
+                System.out.println(message.obj.toString());
+                Gson gson=new Gson();
+                tcp.client.Message msg =gson.fromJson(message.obj.toString(), tcp.client.Message.class);
+                newMessage(scroll_pane,msg.getText(),NICKNAME,"12:15",true,false);
+                // This is where you do your work in the UI thread.
+                // Your worker tells you in the message what to do.
+            }
+        };
+
         Intent stopIntent=new Intent(this,BackgroundService.class);
         stopIntent.setAction("stop");
         startService(stopIntent);
-
-
-
+        final Client client1=new Client("kurilkachat.trelloiii.site",8091,NICKNAME);
         try {
-            socket.connect("ws://188.225.27.155:8047/krkla", wsh=new IWebSocketConnectionHandler() {
-
-                @Override
-                public void onConnect(ConnectionResponse response) {
-                    navbar.setText(NICKNAME.concat(":  Online"));
-                    //showNotif("Ну ты лох","Соединение установлено");
-
-                }
-
-                @Override
-                public void onOpen() {
-//                    tt.setText("CONNECT");
-                    socket.sendMessage("{\"id\":\""+NICKNAME+"\",\"message\":\"connect\"}");
-                    new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            while (true) {
-                                socket.sendMessage("{\"id\":\""+NICKNAME+"\",\"message\":\"stillAlive\"}");
-                                try {
-                                    Thread.sleep(5000);
-                                } catch (InterruptedException e) {
-                                    e.printStackTrace();
-                                }
-                            }
-                        }
-                    }).start();
-                    loadOnStart();
-
-
-
-                }
-
-                @Override
-                public void onClose(int code, String reason) {
-                    //showNotif(reason,"Соединение оборвано");
-                    navbar.setText(NICKNAME.concat(":  Offline"));
-                    new android.os.Handler().postDelayed(
-                            () -> {
-                                try {
-                                    socket.connect("ws://188.225.27.155:8047/krkla",wsh);
-                                } catch (WebSocketException e) {
-                                    e.printStackTrace();
-                                }
-                            },
-                            5000);
-                }
-
-                @Override
-                public void onMessage(String payload) {
-                    try {
-                        if (!payload.split("[:]")[1].equals(" 6a5df9fcac0cfa3b9b264f372dae311d") && !payload.split("[:]")[1].equals(" 7f021a1415b86f2d013b2618fb31ae53") && !payload.split("[:]")[1].equals(" b640a0ce465fa2a4150c36b305c1c11b") && !payload.split("[:]")[1].equals(" 9d634e1a156dc0c1611eb4c3cff57276") && !payload.split("[:]")[1].equals(" pong")&&!payload.split("[:]")[1].equals("")) {
-                            newMessage(scroll_pane, payload.split("[:]")[1], payload.split("[:]")[0], nowAtime(), payload.split("[:]")[0].equals(NICKNAME), false);
-                        } else if (payload.split("[:]")[1].equals(" 7f021a1415b86f2d013b2618fb31ae53")) {
-                            //TODO end typing
-                            sostoyanie.setText("");
-                        } else if (payload.split("[:]")[1].equals(" b640a0ce465fa2a4150c36b305c1c11b")) {
-                            //TODO user connected
-                            if (!payload.split("[:]")[0].equals(NICKNAME)) {
-                                sostoyanie.setText(payload.split("[:]")[0] + " подключился");
-                                new android.os.Handler().postDelayed(
-                                        () -> sostoyanie.setText(""),
-                                        1000);
-                            }
-
-                        } else if (payload.split("[:]")[1].equals(" 9d634e1a156dc0c1611eb4c3cff57276")) {
-                            //TODO user disconnected
-                            sostoyanie.setText(payload.split("[:]")[0] + " отключился");
-                            new android.os.Handler().postDelayed(
-                                    () -> sostoyanie.setText(""),
-                                    1000);
-                        } else if (payload.split("[:]")[1].equals(" 6a5df9fcac0cfa3b9b264f372dae311d")) {
-                            //TODO typing
-                            if (!payload.split("[:]")[0].equals(NICKNAME)) {
-                                sostoyanie.setText(payload.split("[:]")[0] + " печатает...");
-                            }
-                        }
-                    }
-                    catch (Exception e){
-
-                    }
-
-                }
-
-                @Override
-                public void onMessage(byte[] payload, boolean isBinary) {
-
-                }
-
-                @Override
-                public void onPing() {
-
-                }
-
-                @Override
-                public void onPing(byte[] payload) {
-
-                }
-
-                @Override
-                public void onPong() {
-
-                }
-
-                @Override
-                public void onPong(byte[] payload) {
-
-                }
-
-                @Override
-                public void setConnection(WebSocketConnection connection) {
-
-                }
+            Thread a = new Thread(() -> {
+                client1.listenToServer(this);
             });
-
-
-
-        } catch(WebSocketException wse) {
-            Log.d("WEBSOCKETS", wse.getMessage());
+            a.start();
+            //a.join();
         }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+
+
+
+
         btnSend.setOnClickListener(v -> {
-            if(!textInput.getText().toString().equals("")) {
-                socket.sendMessage("{\"id\":\"" + NICKNAME + "\",\"message\":\"" + textInput.getText().toString() + "\"}");
-                System.out.println(textInput.getText().toString());
-                JSONObject postdata = new JSONObject();
-                try {
-                    postdata.put("id",  NICKNAME);
-                    postdata.put("message", textInput.getText().toString());
-                } catch(JSONException e){
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        final Request request = new Request.Builder()
-                                .url("http://kurilka.std-763.ist.mospolytech.ru/post.php?id="+NICKNAME+"&message="+textInput.getText().toString())
-                                .get()
-                                .addHeader("Content-Type", "application/json")
-                                .addHeader("cache-control", "no-cache")
-                                .build();
-                        try {
-                            Gson gson=new Gson();
-                            Response response=client.newCall(request).execute();
-                            MessageServerResponse[] message=gson.fromJson(response.body().string(),MessageServerResponse[].class);
-                            //MessageServerResponse message=gson.fromJson(response.body().string(),MessageServerResponse.class);
-                            System.out.println(message[0].getMessage());
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }).start();
-                textInput.setText("");
-            }
+            client1.sendMessage(textInput.getText().toString());
+//            if(!textInput.getText().toString().equals("")) {
+//                socket.sendMessage("{\"id\":\"" + NICKNAME + "\",\"message\":\"" + textInput.getText().toString() + "\"}");
+//                System.out.println(textInput.getText().toString());
+//                JSONObject postdata = new JSONObject();
+//                try {
+//                    postdata.put("id",  NICKNAME);
+//                    postdata.put("message", textInput.getText().toString());
+//                } catch(JSONException e){
+//                    // TODO Auto-generated catch block
+//                    e.printStackTrace();
+//                }
+//                new Thread(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        final Request request = new Request.Builder()
+//                                .url("http://kurilka.std-763.ist.mospolytech.ru/post.php?id="+NICKNAME+"&message="+textInput.getText().toString())
+//                                .get()
+//                                .addHeader("Content-Type", "application/json")
+//                                .addHeader("cache-control", "no-cache")
+//                                .build();
+//                        try {
+//                            Gson gson=new Gson();
+//                            Response response=client.newCall(request).execute();
+//                            MessageServerResponse[] message=gson.fromJson(response.body().string(),MessageServerResponse[].class);
+//                            //MessageServerResponse message=gson.fromJson(response.body().string(),MessageServerResponse.class);
+//                            System.out.println(message[0].getMessage());
+//                        } catch (IOException e) {
+//                            e.printStackTrace();
+//                        }
+//                    }
+//                }).start();
+//                textInput.setText("");
+//            }
 
         });
 
@@ -382,7 +295,7 @@ public class MainActivity extends Activity {
         NotificationHelper nh = new NotificationHelper(MainActivity.this);
         nh.createNotification(title, text);
     }
-    void newMessage(LinearLayout ll, String message,String id,String time, boolean isMy,boolean isFirstLoad){
+    public void newMessage(LinearLayout ll, String message,String id,String time, boolean isMy,boolean isFirstLoad){
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
 
         params.setMargins(20, 40, 20, 10);
@@ -435,44 +348,13 @@ public class MainActivity extends Activity {
         });
     }
 
+    @Override
+    public void onMessage(String s) {
+        System.out.println("message income");
+        Message message = mHandler.obtainMessage(0,s);
+        message.sendToTarget();
 
-    void sendNotification(){
-        Intent notificationIntent = new Intent(this, MainActivity.class);
-        PendingIntent contentIntent = PendingIntent.getActivity(this,
-                0, notificationIntent,
-                PendingIntent.FLAG_CANCEL_CURRENT);
 
-        Resources res = this.getResources();
-
-        // до версии Android 8.0 API 26
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this);
-
-        builder.setContentIntent(contentIntent)
-                // обязательные настройки
-                .setSmallIcon(R.drawable.ic_stat_onesignal_default)
-                //.setContentTitle(res.getString(R.string.notifytitle)) // Заголовок уведомления
-                .setContentTitle("Напоминание")
-                //.setContentText(res.getString(R.string.notifytext))
-                .setContentText("Пора покормить кота") // Текст уведомления
-                // необязательные настройки
-               // .setLargeIcon(BitmapFactory.decodeResource(res, R.drawable.hungrycat)) // большая
-                // картинка
-                //.setTicker(res.getString(R.string.warning)) // текст в строке состояния
-                .setTicker("Последнее китайское предупреждение!")
-                .setWhen(System.currentTimeMillis())
-                .setAutoCancel(true);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = getString(R.string.app_name);
-            String description = getString(R.string.app_name);
-            int importance = NotificationManager.IMPORTANCE_DEFAULT;
-            NotificationChannel channel = new NotificationChannel("1", name, importance);
-            channel.setDescription(description);
-            // Register the channel with the system; you can't change the importance
-            // or other notification behaviors after this
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(channel);
-            notificationManager.notify(1,builder.build());
-        }
 
     }
 }
