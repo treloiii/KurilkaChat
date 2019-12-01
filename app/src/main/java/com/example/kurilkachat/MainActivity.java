@@ -1,6 +1,7 @@
 package com.example.kurilkachat;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
@@ -32,8 +33,6 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import com.google.gson.Gson;
 import com.karumi.dexter.Dexter;
 import com.karumi.dexter.PermissionToken;
@@ -64,9 +63,9 @@ import okhttp3.Response;
 import tcp.client.Client;
 import tcp.client.MessageHandler;
 
-public class MainActivity extends AppCompatActivity implements MessageHandler {
+public class MainActivity extends Activity implements MessageHandler {
 
-    private LinearLayout scroll_pane;
+    private LinearLayout scroll_pane,imageAttach;
     private WebsocketClientEndpoint clientEndPoint;
     private OkHttpClient client;
     private Button btnSend,btnAttachFile;
@@ -106,6 +105,7 @@ public class MainActivity extends AppCompatActivity implements MessageHandler {
 
         navbar=findViewById(R.id.navbar);
         scroll_pane = findViewById(R.id.scroll_pane);
+        imageAttach=findViewById(R.id.imgAttach);
         btnSend=findViewById(R.id.btnSend);
         imgView=findViewById(R.id.imgView);
         test=findViewById(R.id.test);
@@ -184,31 +184,19 @@ public class MainActivity extends AppCompatActivity implements MessageHandler {
 
 
         btnSend.setOnClickListener(v -> {
-           // client1.sendMessage(textInput.getText().toString());
-//            if(!textInput.getText().toString().equals("")) {
-//                client1.sendMessage(textInput.getText().toString(),"msg");
-////                this.postMessageToDb();
-//                textInput.setText("");
-//            }
-            if(sendBitmap!=null){
-                new Thread(() -> {
-                    RequestBody req = new MultipartBody.Builder().addFormDataPart("file", bitmapToBase64(sendBitmap)).build();
-                    final Request request = new Request.Builder()
-                            .url("http://kurilkahttp.std-763.ist.mospolytech.ru/upload/img")
-                            .post(req)
-                            .addHeader("Content-Type", "application/json")
-                            .addHeader("cache-control", "no-cache")
-                            .build();
-                    try {
-                        Response response = client.newCall(request).execute();
-                       // System.out.println(response.body().string());
-                        loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/"+response.body().string()+".jpg");
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }).start();
-
-
+//            client1.sendMessage(textInput.getText().toString(),"msg");
+            if(!textInput.getText().toString().equals("")) {
+                client1.sendMessage(textInput.getText().toString(),"msg");
+//                this.postMessageToDb();
+                textInput.setText("");
+                if(sendBitmap!=null){
+                    sendFile();
+                }
+            }
+            else {
+                if (sendBitmap != null) {
+                   sendFile();
+                }
             }
         });
         btnAttachFile.setOnClickListener(v->{
@@ -257,6 +245,8 @@ public class MainActivity extends AppCompatActivity implements MessageHandler {
 
                 Toast.makeText(MainActivity.this, "Image Saved!", Toast.LENGTH_SHORT).show();
                 imgView.setImageBitmap(bitmap);
+               // imgView.setVisibility(View.VISIBLE);
+                imageAttach.setVisibility(View.VISIBLE);
                 sendBitmap=bitmap;
             } catch (IOException e) {
                 e.printStackTrace();
@@ -265,11 +255,40 @@ public class MainActivity extends AppCompatActivity implements MessageHandler {
         }
     }
 
+
+    private void sendFile(){
+        imageAttach.setVisibility(View.GONE);
+        new Thread(() -> {
+            RequestBody req = new MultipartBody.Builder().addFormDataPart("file", bitmapToBase64(sendBitmap)).
+                    addFormDataPart("name", NICKNAME).
+                    addFormDataPart("message", textInput.getText().toString()).build();
+            final Request request = new Request.Builder()
+                    .url("http://kurilkahttp.std-763.ist.mospolytech.ru/upload/img")
+                    .post(req)
+                    .addHeader("Content-Type", "application/json")
+                    .addHeader("cache-control", "no-cache")
+                    .build();
+            try {
+                Response response = client.newCall(request).execute();
+                // System.out.println(response.body().string());
+                loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + response.body().string() + ".jpg");
+                sendBitmap=null;
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
     public String bitmapToBase64(Bitmap bitmap){
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
         byte[] byteArray = byteArrayOutputStream .toByteArray();
         return Base64.encodeToString(byteArray, Base64.DEFAULT);
+    }
+
+    public void deleteAttached(View v){
+        imageAttach.setVisibility(View.GONE);
+        this.sendBitmap=null;
     }
 
     @Override
@@ -369,6 +388,7 @@ public class MainActivity extends AppCompatActivity implements MessageHandler {
         ImageView newImg=new ImageView(this);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dpToPx(150),dpToPx(200));
         params.gravity=Gravity.END;
+        params.setMargins(0, 40, 20, 10);
         newImg.setLayoutParams(params);
 
         newImg.setImageDrawable(drawable);
@@ -376,8 +396,7 @@ public class MainActivity extends AppCompatActivity implements MessageHandler {
         Bitmap tmp=((BitmapDrawable)newImg.getDrawable()).getBitmap();
         newImg.setImageBitmap(ImageHelper.getRoundedCornerBitmap(tmp,30));
         scroll_pane.addView(newImg);
-
-
+        scrollDown();
     }
 
     public int dpToPx(int dp) {
@@ -487,6 +506,7 @@ public class MainActivity extends AppCompatActivity implements MessageHandler {
     private void setUnTyping(){
         sostoyanie.setText("");
     }
+
 
     class AsyncLoadImg extends AsyncTask<String,Void, Drawable> {
         @Override
