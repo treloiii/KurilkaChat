@@ -1,101 +1,81 @@
 package com.example.kurilkachat;
 
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.NotificationCompat;
-
-import android.app.Activity;
-import android.app.AlertDialog;
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.app.Service;
-import android.content.Context;
-import android.content.DialogInterface;
+import android.Manifest;
 import android.content.Intent;
-import android.content.res.Resources;
-import android.graphics.BitmapFactory;
-import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.StrictMode;
+import android.provider.MediaStore;
 import android.text.Editable;
-import android.text.Html;
 import android.text.Layout;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.TextWatcher;
 import android.text.style.AlignmentSpan;
 import android.text.style.ForegroundColorSpan;
-import android.util.Log;
+import android.util.Base64;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.karumi.dexter.Dexter;
+import com.karumi.dexter.PermissionToken;
+import com.karumi.dexter.listener.PermissionDeniedResponse;
+import com.karumi.dexter.listener.PermissionGrantedResponse;
+import com.karumi.dexter.listener.PermissionRequest;
+import com.karumi.dexter.listener.single.PermissionListener;
 
 import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.handshake.ServerHandshake;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.Console;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.ArrayList;
+import java.io.InputStream;
+import java.net.URL;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
-import java.util.List;
-
-import javax.websocket.CloseReason;
 
 import io.crossbar.autobahn.websocket.WebSocketConnection;
-import io.crossbar.autobahn.websocket.exceptions.WebSocketException;
-import io.crossbar.autobahn.websocket.interfaces.IWebSocketConnectionHandler;
-import io.crossbar.autobahn.websocket.types.ConnectionResponse;
 import okhttp3.MediaType;
+import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-import okhttp3.WebSocket;
-import okhttp3.WebSocketListener;
-import okio.ByteString;
-import retrofit2.Call;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
 import tcp.client.Client;
 import tcp.client.MessageHandler;
 
-public class MainActivity extends Activity implements MessageHandler {
+public class MainActivity extends AppCompatActivity implements MessageHandler {
 
     private LinearLayout scroll_pane;
     private WebsocketClientEndpoint clientEndPoint;
     private OkHttpClient client;
-    private Button btnSend;
+    private Button btnSend,btnAttachFile;
     private TextView sostoyanie,navbar;
     private ScrollView scroll;
     private EditText textInput;
-    protected static final  String NICKNAME="ПоЖиЛоЙйй";
-    //protected static final  String NICKNAME="Гришин";
+    private ImageView imgView,test;
+    //protected static final  String NICKNAME="ПоЖиЛоЙйй";
+    protected static final  String NICKNAME="Гришин";
     //private IWebSocketConnectionHandler wsh;
     WebSocketClient c = null;
     private final WebSocketConnection  socket = new WebSocketConnection();
@@ -105,11 +85,17 @@ public class MainActivity extends Activity implements MessageHandler {
 
     private Handler mHandler;
 
+    private Bitmap sendBitmap;
+
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+
+
+
         setContentView(R.layout.activity_main);
 
         if (android.os.Build.VERSION.SDK_INT > 9) {
@@ -121,6 +107,9 @@ public class MainActivity extends Activity implements MessageHandler {
         navbar=findViewById(R.id.navbar);
         scroll_pane = findViewById(R.id.scroll_pane);
         btnSend=findViewById(R.id.btnSend);
+        imgView=findViewById(R.id.imgView);
+        test=findViewById(R.id.test);
+        btnAttachFile=findViewById(R.id.btnSendFile);
         textInput=findViewById(R.id.textInput);
         scroll=findViewById(R.id.scroll);
         sostoyanie=findViewById(R.id.sostoyanie);
@@ -184,9 +173,9 @@ public class MainActivity extends Activity implements MessageHandler {
             }
         };
 
-        Intent stopIntent=new Intent(this,BackgroundService.class);
-        stopIntent.setAction("stop");
-        startService(stopIntent);
+//        Intent stopIntent=new Intent(this,BackgroundService.class);
+//        stopIntent.setAction("stop");
+//        startService(stopIntent);
 
 
 
@@ -196,15 +185,92 @@ public class MainActivity extends Activity implements MessageHandler {
 
         btnSend.setOnClickListener(v -> {
            // client1.sendMessage(textInput.getText().toString());
-            if(!textInput.getText().toString().equals("")) {
-                client1.sendMessage(textInput.getText().toString(),"msg");
-//                this.postMessageToDb();
-                textInput.setText("");
+//            if(!textInput.getText().toString().equals("")) {
+//                client1.sendMessage(textInput.getText().toString(),"msg");
+////                this.postMessageToDb();
+//                textInput.setText("");
+//            }
+            if(sendBitmap!=null){
+                new Thread(() -> {
+                    RequestBody req = new MultipartBody.Builder().addFormDataPart("file", bitmapToBase64(sendBitmap)).build();
+                    final Request request = new Request.Builder()
+                            .url("http://kurilkahttp.std-763.ist.mospolytech.ru/upload/img")
+                            .post(req)
+                            .addHeader("Content-Type", "application/json")
+                            .addHeader("cache-control", "no-cache")
+                            .build();
+                    try {
+                        Response response = client.newCall(request).execute();
+                       // System.out.println(response.body().string());
+                        loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/"+response.body().string()+".jpg");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }).start();
+
+
             }
+        });
+        btnAttachFile.setOnClickListener(v->{
+
+            Dexter.withActivity(this)
+                    .withPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
+                    .withListener(new PermissionListener() {
+                        @Override
+                        public void onPermissionGranted(PermissionGrantedResponse response) {
+                            Intent intent = new Intent();
+                            intent.setType("image/*");
+                            intent.setAction(Intent.ACTION_PICK);
+                            // intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            //  intent.setFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
+                            startActivityForResult(intent,1);
+
+                        }
+
+                        @Override
+                        public void onPermissionDenied(PermissionDeniedResponse response) {
+
+                        }
+
+                        @Override
+                        public void onPermissionRationaleShouldBeShown(PermissionRequest permission, PermissionToken token) {
+
+                        }
+                    })
+                    .check();
 
         });
+//        test.setImageDrawable(LoadImageFromWebOperations("https://wallbox.ru/wallpapers/main/201620/37da0352f83ab7b.jpg"));
+
+
+
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        System.out.println(requestCode);
+        if (data != null) {
+            Uri contentURI = data.getData();
+            try {
+                Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), contentURI);
+
+                Toast.makeText(MainActivity.this, "Image Saved!", Toast.LENGTH_SHORT).show();
+                imgView.setImageBitmap(bitmap);
+                sendBitmap=bitmap;
+            } catch (IOException e) {
+                e.printStackTrace();
+                Toast.makeText(MainActivity.this, "Failed!", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    public String bitmapToBase64(Bitmap bitmap){
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
+        byte[] byteArray = byteArrayOutputStream .toByteArray();
+        return Base64.encodeToString(byteArray, Base64.DEFAULT);
+    }
 
     @Override
     protected void onDestroy() {
@@ -295,18 +361,57 @@ public class MainActivity extends Activity implements MessageHandler {
 
     }
 
+    public void loadImage(String url){
+        new AsyncLoadImg().execute(url);
+    }
+
+    public void newImageMessage(Drawable drawable){
+        ImageView newImg=new ImageView(this);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dpToPx(150),dpToPx(200));
+        params.gravity=Gravity.END;
+        newImg.setLayoutParams(params);
+
+        newImg.setImageDrawable(drawable);
+        newImg.setScaleType(ImageView.ScaleType.FIT_XY);
+        Bitmap tmp=((BitmapDrawable)newImg.getDrawable()).getBitmap();
+        newImg.setImageBitmap(ImageHelper.getRoundedCornerBitmap(tmp,30));
+        scroll_pane.addView(newImg);
+
+
+    }
+
+    public int dpToPx(int dp) {
+        float density = this.getResources()
+                .getDisplayMetrics()
+                .density;
+        return Math.round((float) dp * density);
+    }
+
+
+    public static Drawable LoadImageFromWebOperations(String url) {
+
+        try {
+            InputStream is = (InputStream) new URL(url).getContent();
+            Drawable d = Drawable.createFromStream(is, "img");
+            return d;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
 
     @Override
     protected void onResume() {
-        scroll_pane.removeAllViews();
-        loadOnStart();
+//        scroll_pane.removeAllViews();
+////        loadOnStart();
         super.onResume();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        moveTaskToBack(true);
+       // moveTaskToBack(true);
     }
 
     void scrollDown(){
@@ -382,4 +487,23 @@ public class MainActivity extends Activity implements MessageHandler {
     private void setUnTyping(){
         sostoyanie.setText("");
     }
+
+    class AsyncLoadImg extends AsyncTask<String,Void, Drawable> {
+        @Override
+        protected Drawable doInBackground(String... strings) {
+            return MainActivity.LoadImageFromWebOperations(strings[0]);
+        }
+
+        @Override
+        protected void onProgressUpdate(Void... values) {
+            super.onProgressUpdate(values);
+        }
+
+        @Override
+        protected void onPostExecute(Drawable drawable) {
+            super.onPostExecute(drawable);
+            newImageMessage(drawable);
+        }
+    }
 }
+
