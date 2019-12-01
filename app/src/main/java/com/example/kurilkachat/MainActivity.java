@@ -187,10 +187,13 @@ public class MainActivity extends Activity implements MessageHandler {
 //            client1.sendMessage(textInput.getText().toString(),"msg");
             if(!textInput.getText().toString().equals("")) {
                 client1.sendMessage(textInput.getText().toString(),"msg");
-//                this.postMessageToDb();
-                textInput.setText("");
                 if(sendBitmap!=null){
                     sendFile();
+                    textInput.setText("");
+                }
+                else{
+                    this.postMessageToDb(textInput.getText().toString());
+                    textInput.setText("");
                 }
             }
             else {
@@ -454,7 +457,7 @@ public class MainActivity extends Activity implements MessageHandler {
     }
 
 
-    private void postMessageToDb(){
+    private void postMessageToDb(String message){
         JSONObject postdata = new JSONObject();
             try {
                 postdata.put("id",  NICKNAME);
@@ -466,18 +469,18 @@ public class MainActivity extends Activity implements MessageHandler {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
+                    RequestBody body=new MultipartBody.Builder().addFormDataPart("name",NICKNAME).addFormDataPart("message",message).build();
                     final Request request = new Request.Builder()
-                            .url("http://kurilka.std-763.ist.mospolytech.ru/post.php?id="+NICKNAME+"&message="+textInput.getText().toString())
-                            .get()
+                            .url("http://kurilkahttp.std-763.ist.mospolytech.ru/new/message")
+                            .post(body)
                             .addHeader("Content-Type", "application/json")
                             .addHeader("cache-control", "no-cache")
                             .build();
                     try {
-                        Gson gson=new Gson();
-                        Response response=client.newCall(request).execute();
-                        MessageServerResponse[] message=gson.fromJson(response.body().string(),MessageServerResponse[].class);
-                        //MessageServerResponse message=gson.fromJson(response.body().string(),MessageServerResponse.class);
-                        System.out.println(message[0].getMessage());
+                        client.newCall(request).execute();
+//                        MessageServerResponse[] message=gson.fromJson(response.body().string(),MessageServerResponse[].class);
+//                        //MessageServerResponse message=gson.fromJson(response.body().string(),MessageServerResponse.class);
+//                        System.out.println(message[0].getMessage());
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
