@@ -2,7 +2,9 @@ package com.example.kurilkachat;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -46,6 +48,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -85,6 +88,7 @@ public class MainActivity extends Activity implements MessageHandler {
     private Handler mHandler;
 
     private Bitmap sendBitmap;
+    private File sendFile;
 
 
 
@@ -243,6 +247,9 @@ public class MainActivity extends Activity implements MessageHandler {
         System.out.println(requestCode);
         if (data != null) {
             Uri contentURI = data.getData();
+            String realPath=getRealPathFromURI(this,contentURI);
+            sendFile=new File(realPath);
+            System.out.println(realPath);
             try {
                 Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), contentURI);
 
@@ -258,11 +265,27 @@ public class MainActivity extends Activity implements MessageHandler {
         }
     }
 
-
+    private String getRealPathFromURI(Context context, Uri contentUri) {
+        Cursor cursor = null;
+        try {
+            String[] proj = { MediaStore.Images.Media.DATA };
+            cursor = context.getContentResolver().query(contentUri,  proj, null, null, null);
+            int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+            cursor.moveToFirst();
+            return cursor.getString(column_index);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "";
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+    }
     private void sendFile(){
         imageAttach.setVisibility(View.GONE);
         new Thread(() -> {
-            RequestBody req = new MultipartBody.Builder().addFormDataPart("file", bitmapToBase64(sendBitmap)).
+            RequestBody req = new MultipartBody.Builder().addFormDataPart("file",sendFile.getName(),RequestBody.create(MediaType.parse("image/*"),sendFile)).
                     addFormDataPart("name", NICKNAME).
                     addFormDataPart("message", textInput.getText().toString()).build();
             final Request request = new Request.Builder()
