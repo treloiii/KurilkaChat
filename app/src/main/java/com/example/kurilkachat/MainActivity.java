@@ -52,6 +52,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -194,7 +195,7 @@ public class MainActivity extends Activity implements MessageHandler {
 
 
         btnSend.setOnClickListener(v -> {
-            client1.sendMessage(textInput.getText().toString(),"msg");
+//            client1.sendMessage(textInput.getText().toString(),"msg");
             if(!textInput.getText().toString().equals("")) {
                 client1.sendMessage(textInput.getText().toString(),"msg");
                 if(sendBitmap!=null){
@@ -292,7 +293,8 @@ public class MainActivity extends Activity implements MessageHandler {
     private void sendFile(){
         imageAttach.setVisibility(View.GONE);
         new Thread(() -> {
-            RequestBody req = new MultipartBody.Builder().addFormDataPart("file",sendFile.getName(),RequestBody.create(MediaType.parse("image/*"),sendFile)).
+            try {
+            RequestBody req = new MultipartBody.Builder().addFormDataPart("file",sendFile.getName(),RequestBody.create(MediaType.parse(Files.probeContentType(sendFile.toPath())),sendFile)).
                     addFormDataPart("name", NICKNAME).
                     addFormDataPart("message", textInput.getText().toString()).build();
             final Request request = new Request.Builder()
@@ -301,7 +303,7 @@ public class MainActivity extends Activity implements MessageHandler {
                     .addHeader("Content-Type", "application/json")
                     .addHeader("cache-control", "no-cache")
                     .build();
-            try {
+
                 Response response = client.newCall(request).execute();
                 // System.out.println(response.body().string());
                 loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + response.body().string() + ".jpg",new ImageView(this),false);
@@ -342,43 +344,8 @@ public class MainActivity extends Activity implements MessageHandler {
     }
 
    private  void loadOnStart(){
-       Handler handler=new Handler();
-       handler.post(new Runnable() {
-           @Override
-           public void run() {
-               scroll_pane.removeAllViews();
-               final Request request = new Request.Builder()
-                       .url("http://kurilkahttp.std-763.ist.mospolytech.ru/get/messages")
-                       .get()
-                       .addHeader("Content-Type", "application/json")
-                       .addHeader("cache-control", "no-cache")
-                       .build();
-               try {
-                   Gson gson=new Gson();
-                   Response response=client.newCall(request).execute();
-                   MessageServerResponse[] messages=gson.fromJson(response.body().string(),MessageServerResponse[].class);
-                   for (int i=0;i<messages.length-1;i++) {
-                       MessageServerResponse message=messages[i];
-                       if(message.getMessage().equals("")&&!message.getImg().equals("")){
-                           //loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + message.getImg() + ".jpg");
-                            loadEmptyImages(message.getImg());
-                       }
-                       else {
-                           newMessage(scroll_pane, message.getMessage(), String.valueOf(message.getName()), nowAtime(), NICKNAME.equals(message.getName()), true);
-                       }
-                   }
-
-                   List<String> alKeys = new ArrayList<>(loadedImgs.keySet());
-                   Collections.reverse(alKeys);
-                   for(String key:alKeys){
-                       loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + key + ".jpg", loadedImgs.get(key),true);
-                   }
-
-               } catch (IOException e) {
-                   e.printStackTrace();
-               }
-           }
-       });
+       scroll_pane.removeAllViews();
+       new AsyncLoadOnStart().execute();
    }
 
     String nowAtime(){
@@ -440,7 +407,7 @@ public class MainActivity extends Activity implements MessageHandler {
         AsyncLoadImg asyncLoadImg=new AsyncLoadImg();
         asyncLoadImg.setImgView(newImg);
         asyncLoadImg.setFirstLoad(isFirstLoad);
-        asyncLoadImg.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,url);
+        asyncLoadImg.execute(url);
     }
 
     public void newImageMessage(Drawable drawable,ImageView newImg,boolean isFirstLoad){
@@ -467,7 +434,7 @@ public class MainActivity extends Activity implements MessageHandler {
     }
 
 
-    public static Drawable LoadImageFromWebOperations(String url) {
+    public Drawable LoadImageFromWebOperations(String url) {
 
         try {
             InputStream is = (InputStream) new URL(url).getContent();
@@ -578,7 +545,7 @@ public class MainActivity extends Activity implements MessageHandler {
 
         @Override
         protected Drawable doInBackground(String... strings) {
-            return MainActivity.LoadImageFromWebOperations(strings[0]);
+            return LoadImageFromWebOperations(strings[0]);
         }
 
         @Override
@@ -595,6 +562,55 @@ public class MainActivity extends Activity implements MessageHandler {
 
         public void setFirstLoad(boolean firstLoad) {
             this.firstLoad = firstLoad;
+        }
+    }
+    class AsyncLoadOnStart extends AsyncTask<Void,Void,Response>{
+
+        @Override
+        protected Response doInBackground(Void... voids) {
+            final Request request = new Request.Builder()
+                    .url("http://kurilkahttp.std-763.ist.mospolytech.ru/get/messages")
+                    .get()
+                    .addHeader("Content-Type", "application/json")
+                    .addHeader("cache-control", "no-cache")
+                    .build();
+            try {
+                return client.newCall(request).execute();
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Response response) {
+            super.onPostExecute(response);
+            try {
+                Gson gson = new Gson();
+                MessageServerResponse[] messages = gson.fromJson(response.body().string(), MessageServerResponse[].class);
+                for (int i = 0; i < messages.length; i++) {
+                    MessageServerResponse message = messages[i];
+                    String msg=gson.toJson(message,MessageServerResponse.class);
+                    String a=msg;
+                    if (message.getMessage().equals("") && !message.getImg().equals("")) {
+                        //loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + message.getImg() + ".jpg");
+                        loadEmptyImages(message.getImg());
+                    } else {
+                        newMessage(scroll_pane, message.getMessage(), String.valueOf(message.getName()), nowAtime(), NICKNAME.equals(message.getName()), true);
+                    }
+                }
+                List<String> alKeys = new ArrayList<>(loadedImgs.keySet());
+                Collections.reverse(alKeys);
+                for(String key:alKeys){
+                    loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + key + ".jpg", loadedImgs.get(key),true);
+                }
+//                for (Map.Entry<String, ImageView> entry : loadedImgs.entrySet()) {
+//                        loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + entry.getKey() + ".jpg", entry.getValue(), true);
+//                }
+            }
+            catch (Exception e){
+                e.printStackTrace();
+            }
         }
     }
 }
