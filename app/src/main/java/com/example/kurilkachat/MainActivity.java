@@ -52,16 +52,17 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import http.HttpHelper;
 import io.crossbar.autobahn.websocket.WebSocketConnection;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
@@ -90,12 +91,13 @@ public class MainActivity extends Activity implements MessageHandler {
     public static final MediaType MEDIA_TYPE = MediaType.parse("application/json");
     private MessageServerResponse[] messages;
     final Client client1=new Client("kurilkachat.trelloiii.site",8091,NICKNAME);
-
+    HttpHelper httpHelper=new HttpHelper();
     private Map<String,ImageView> loadedImgs=new LinkedHashMap<>();
     private Handler mHandler;
 
     private Bitmap sendBitmap;
     private File sendFile;
+    private String deleteToken="";
 
 
 
@@ -266,6 +268,17 @@ public class MainActivity extends Activity implements MessageHandler {
                // imgView.setVisibility(View.VISIBLE);
                 imageAttach.setVisibility(View.VISIBLE);
                 sendBitmap=bitmap;
+                new Thread(()->{
+                    try {
+                        Request request=httpHelper.post(null,sendFile,"http://kurilkahttp.std-763.ist.mospolytech.ru/upload/img/temp");
+                        Response response = client.newCall(request).execute();
+                        deleteToken=response.body().string();
+                    }
+                    catch (Exception e){
+                        e.printStackTrace();
+                    }
+                }).start();
+                //TODO upload to temp
             } catch (IOException e) {
                 e.printStackTrace();
                 Toast.makeText(MainActivity.this, "Failed!", Toast.LENGTH_SHORT).show();
@@ -294,19 +307,17 @@ public class MainActivity extends Activity implements MessageHandler {
         imageAttach.setVisibility(View.GONE);
         new Thread(() -> {
             try {
-            RequestBody req = new MultipartBody.Builder().addFormDataPart("file",sendFile.getName(),RequestBody.create(MediaType.parse(Files.probeContentType(sendFile.toPath())),sendFile)).
-                    addFormDataPart("name", NICKNAME).
-                    addFormDataPart("message", textInput.getText().toString()).build();
-            final Request request = new Request.Builder()
-                    .url("http://kurilkahttp.std-763.ist.mospolytech.ru/upload/img")
-                    .post(req)
-                    .addHeader("Content-Type", "application/json")
-                    .addHeader("cache-control", "no-cache")
-                    .build();
-
+                Map<String,String> postData=new HashMap<>();
+                postData.put("token",deleteToken);
+                postData.put("name",NICKNAME);
+                postData.put("message",textInput.getText().toString());
+                Request request=httpHelper.post(postData,null,"http://kurilkahttp.std-763.ist.mospolytech.ru/upload/img");
                 Response response = client.newCall(request).execute();
-                // System.out.println(response.body().string());
-                loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + response.body().string() + ".jpg",new ImageView(this),false);
+                String responseStr=response.body().string();
+                if(responseStr.equals("file not found"))
+                    System.out.println("NOT FOUND");
+                else
+                    loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + responseStr + ".jpg",new ImageView(this),false);
                 sendBitmap=null;
             } catch (IOException e) {
                 e.printStackTrace();
@@ -322,8 +333,21 @@ public class MainActivity extends Activity implements MessageHandler {
     }
 
     public void deleteAttached(View v){
-        imageAttach.setVisibility(View.GONE);
-        this.sendBitmap=null;
+        new Thread(() -> {
+            try {
+                Map<String,String> postData=new HashMap<>();
+                postData.put("token",deleteToken);
+                Request request=httpHelper.post(postData,null,"http://kurilkahttp.std-763.ist.mospolytech.ru/delete/img/temp");
+                Response response = client.newCall(request).execute();
+                String responseStr=response.body().string();
+                imageAttach.post(()->{
+                   imageAttach.setVisibility(View.GONE);
+                });
+                sendBitmap=null;
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
 
     @Override
@@ -593,7 +617,6 @@ public class MainActivity extends Activity implements MessageHandler {
                     String msg=gson.toJson(message,MessageServerResponse.class);
                     String a=msg;
                     if (message.getMessage().equals("") && !message.getImg().equals("")) {
-                        //loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + message.getImg() + ".jpg");
                         loadEmptyImages(message.getImg());
                     } else {
                         newMessage(scroll_pane, message.getMessage(), String.valueOf(message.getName()), nowAtime(), NICKNAME.equals(message.getName()), true);
@@ -604,9 +627,6 @@ public class MainActivity extends Activity implements MessageHandler {
                 for(String key:alKeys){
                     loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + key + ".jpg", loadedImgs.get(key),true);
                 }
-//                for (Map.Entry<String, ImageView> entry : loadedImgs.entrySet()) {
-//                        loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + entry.getKey() + ".jpg", entry.getValue(), true);
-//                }
             }
             catch (Exception e){
                 e.printStackTrace();
