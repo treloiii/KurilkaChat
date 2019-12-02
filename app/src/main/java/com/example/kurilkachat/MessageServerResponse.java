@@ -1,19 +1,52 @@
 package com.example.kurilkachat;
 
-import com.google.gson.annotations.SerializedName;
-
 public class MessageServerResponse {
-    String id,message,time;
+    private int id;
+    private String name;
+    private String message;
+    private String img;
+    private String img_message;
 
-    public String getId() {
+    public MessageServerResponse() {
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    public void setImg(String img) {
+        this.img = img;
+    }
+
+    public void setImg_message(String img_message) {
+        this.img_message = img_message;
+    }
+
+    public int getId() {
         return id;
+    }
+
+    public String getName() {
+        return name;
     }
 
     public String getMessage() {
         return message;
     }
 
-    public String getTime() {
-        return time;
+    public String getImg() {
+        return img;
+    }
+
+    public String getImg_message() {
+        return img_message;
     }
 }

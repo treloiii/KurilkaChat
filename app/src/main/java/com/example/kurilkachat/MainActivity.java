@@ -52,9 +52,14 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import io.crossbar.autobahn.websocket.WebSocketConnection;
 import okhttp3.MediaType;
@@ -85,6 +90,7 @@ public class MainActivity extends Activity implements MessageHandler {
     private MessageServerResponse[] messages;
     final Client client1=new Client("kurilkachat.trelloiii.site",8091,NICKNAME);
 
+    private Map<String,ImageView> loadedImgs=new LinkedHashMap<>();
     private Handler mHandler;
 
     private Bitmap sendBitmap;
@@ -188,7 +194,7 @@ public class MainActivity extends Activity implements MessageHandler {
 
 
         btnSend.setOnClickListener(v -> {
-//            client1.sendMessage(textInput.getText().toString(),"msg");
+            client1.sendMessage(textInput.getText().toString(),"msg");
             if(!textInput.getText().toString().equals("")) {
                 client1.sendMessage(textInput.getText().toString(),"msg");
                 if(sendBitmap!=null){
@@ -236,6 +242,7 @@ public class MainActivity extends Activity implements MessageHandler {
 
         });
 //        test.setImageDrawable(LoadImageFromWebOperations("https://wallbox.ru/wallpapers/main/201620/37da0352f83ab7b.jpg"));
+        loadOnStart();
 
 
 
@@ -297,7 +304,7 @@ public class MainActivity extends Activity implements MessageHandler {
             try {
                 Response response = client.newCall(request).execute();
                 // System.out.println(response.body().string());
-                loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + response.body().string() + ".jpg");
+                loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + response.body().string() + ".jpg",new ImageView(this),false);
                 sendBitmap=null;
             } catch (IOException e) {
                 e.printStackTrace();
@@ -341,7 +348,7 @@ public class MainActivity extends Activity implements MessageHandler {
            public void run() {
                scroll_pane.removeAllViews();
                final Request request = new Request.Builder()
-                       .url("http://kurilka.std-763.ist.mospolytech.ru/getMessages.php")
+                       .url("http://kurilkahttp.std-763.ist.mospolytech.ru/get/messages")
                        .get()
                        .addHeader("Content-Type", "application/json")
                        .addHeader("cache-control", "no-cache")
@@ -349,11 +356,22 @@ public class MainActivity extends Activity implements MessageHandler {
                try {
                    Gson gson=new Gson();
                    Response response=client.newCall(request).execute();
-                   //System.out.println(response.body().string());
-                   MessageServerResponse[] messages1=gson.fromJson(response.body().string(),MessageServerResponse[].class);
-                   //MessageServerResponse message=gson.fromJson(response.body().string(),MessageServerResponse.class);
-                   for (MessageServerResponse message:messages1) {
-                       newMessage(scroll_pane,message.getMessage(),message.getId(),message.getTime(),NICKNAME.equals(message.getId()),true);
+                   MessageServerResponse[] messages=gson.fromJson(response.body().string(),MessageServerResponse[].class);
+                   for (int i=0;i<messages.length-1;i++) {
+                       MessageServerResponse message=messages[i];
+                       if(message.getMessage().equals("")&&!message.getImg().equals("")){
+                           //loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + message.getImg() + ".jpg");
+                            loadEmptyImages(message.getImg());
+                       }
+                       else {
+                           newMessage(scroll_pane, message.getMessage(), String.valueOf(message.getName()), nowAtime(), NICKNAME.equals(message.getName()), true);
+                       }
+                   }
+
+                   List<String> alKeys = new ArrayList<>(loadedImgs.keySet());
+                   Collections.reverse(alKeys);
+                   for(String key:alKeys){
+                       loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + key + ".jpg", loadedImgs.get(key),true);
                    }
 
                } catch (IOException e) {
@@ -406,12 +424,26 @@ public class MainActivity extends Activity implements MessageHandler {
 
     }
 
-    public void loadImage(String url){
-        new AsyncLoadImg().execute(url);
+    public void loadEmptyImages(String imgName){
+        ImageView newImg=new ImageView(this);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dpToPx(150),dpToPx(200));
+        params.gravity=Gravity.END;
+        params.setMargins(0, 40, 20, 10);
+        newImg.setLayoutParams(params);
+        newImg.setImageDrawable(getResources().getDrawable(R.drawable.img_background));
+        scroll_pane.addView(newImg);
+        loadedImgs.put(imgName,newImg);
+        scrollDown();
     }
 
-    public void newImageMessage(Drawable drawable){
-        ImageView newImg=new ImageView(this);
+    public void loadImage(String url,ImageView newImg,boolean isFirstLoad){
+        AsyncLoadImg asyncLoadImg=new AsyncLoadImg();
+        asyncLoadImg.setImgView(newImg);
+        asyncLoadImg.setFirstLoad(isFirstLoad);
+        asyncLoadImg.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,url);
+    }
+
+    public void newImageMessage(Drawable drawable,ImageView newImg,boolean isFirstLoad){
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dpToPx(150),dpToPx(200));
         params.gravity=Gravity.END;
         params.setMargins(0, 40, 20, 10);
@@ -421,8 +453,10 @@ public class MainActivity extends Activity implements MessageHandler {
         newImg.setScaleType(ImageView.ScaleType.FIT_XY);
         Bitmap tmp=((BitmapDrawable)newImg.getDrawable()).getBitmap();
         newImg.setImageBitmap(ImageHelper.getRoundedCornerBitmap(tmp,30));
-        scroll_pane.addView(newImg);
-        scrollDown();
+        if(!isFirstLoad) {
+            scroll_pane.addView(newImg);
+            scrollDown();
+        }
     }
 
     public int dpToPx(int dp) {
@@ -449,7 +483,7 @@ public class MainActivity extends Activity implements MessageHandler {
     @Override
     protected void onResume() {
 //        scroll_pane.removeAllViews();
-////        loadOnStart();
+
         super.onResume();
     }
 
@@ -535,6 +569,13 @@ public class MainActivity extends Activity implements MessageHandler {
 
 
     class AsyncLoadImg extends AsyncTask<String,Void, Drawable> {
+
+        private ImageView imgView;
+        private boolean firstLoad;
+        public void setImgView(ImageView imgView) {
+            this.imgView = imgView;
+        }
+
         @Override
         protected Drawable doInBackground(String... strings) {
             return MainActivity.LoadImageFromWebOperations(strings[0]);
@@ -548,7 +589,12 @@ public class MainActivity extends Activity implements MessageHandler {
         @Override
         protected void onPostExecute(Drawable drawable) {
             super.onPostExecute(drawable);
-            newImageMessage(drawable);
+            newImageMessage(drawable,imgView,firstLoad);
+            //newImageMessage(drawable);
+        }
+
+        public void setFirstLoad(boolean firstLoad) {
+            this.firstLoad = firstLoad;
         }
     }
 }
