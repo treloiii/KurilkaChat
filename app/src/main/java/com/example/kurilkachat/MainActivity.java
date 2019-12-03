@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -26,11 +25,13 @@ import android.text.style.ForegroundColorSpan;
 import android.util.Base64;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -75,14 +76,14 @@ import tcp.client.MessageHandler;
 
 public class MainActivity extends Activity implements MessageHandler {
 
-    private LinearLayout scroll_pane,imageAttach;
-    private WebsocketClientEndpoint clientEndPoint;
-    private OkHttpClient client;
-    private Button btnSend,btnAttachFile;
-    private TextView sostoyanie,navbar;
-    private ScrollView scroll;
-    private EditText textInput;
-    private ImageView imgView,test;
+    public LinearLayout scroll_pane,imageAttach;
+    public WebsocketClientEndpoint clientEndPoint;
+    public OkHttpClient client;
+    public Button btnSend,btnAttachFile;
+    public TextView sostoyanie,navbar;
+    public ScrollView scroll;
+    public EditText textInput;
+    public ImageView imgView,test;
     //protected static final  String NICKNAME="ПоЖиЛоЙйй";
     protected static final  String NICKNAME="Гришин";
     //private IWebSocketConnectionHandler wsh;
@@ -92,13 +93,14 @@ public class MainActivity extends Activity implements MessageHandler {
     private MessageServerResponse[] messages;
     final Client client1=new Client("kurilkachat.trelloiii.site",8091,NICKNAME);
     HttpHelper httpHelper=new HttpHelper();
-    private Map<String,ImageView> loadedImgs=new LinkedHashMap<>();
-    private Handler mHandler;
-
-    private Bitmap sendBitmap;
-    private File sendFile;
-    private String deleteToken="";
-
+    public Map<String,ImageView> loadedImgs=new LinkedHashMap<>();
+    public Map<String,View> loadedMessageImgs=new LinkedHashMap<>();
+    public Handler mHandler;
+    public ProgressBar attachProgress;
+    public Bitmap sendBitmap;
+    public File sendFile;
+    public String deleteToken="";
+    public ImageResolver imageResolver=new ImageResolver(this,MainActivity.this);
 
 
     @Override
@@ -126,6 +128,7 @@ public class MainActivity extends Activity implements MessageHandler {
         textInput=findViewById(R.id.textInput);
         scroll=findViewById(R.id.scroll);
         sostoyanie=findViewById(R.id.sostoyanie);
+        attachProgress=findViewById(R.id.progressBar);
         client = new OkHttpClient();
 
 
@@ -152,7 +155,7 @@ public class MainActivity extends Activity implements MessageHandler {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                client1.sendMessage("text change","textInput");
+                client1.sendMessage("text change","textInput",null);
 //                System.out.println(s);
 //                socket.sendMessage("{\"id\":\""+NICKNAME+"\",\"message\":\"6a5df9fcac0cfa3b9b264f372dae311d\"}");
 
@@ -161,7 +164,7 @@ public class MainActivity extends Activity implements MessageHandler {
             @Override
             public void afterTextChanged(Editable s) {
                 new android.os.Handler().postDelayed(()->{
-                    client1.sendMessage("text stop","textOver");
+                    client1.sendMessage("text stop","textOver",null);
                 },1000);
 //                System.out.println("перестал печатать");
 //                //socket.sendMessage("{\"id\":\""+NICKNAME+"\",\"message\":\"7f021a1415b86f2d013b2618fb31ae53\"}");
@@ -181,10 +184,21 @@ public class MainActivity extends Activity implements MessageHandler {
                     setTyping(msg.getName());
                 else if(msg.getTextAdmin().equals("textOver"))
                     setUnTyping();
-                else
+                else if(msg.getTextAdmin().equals("msg"))
                     newMessage(scroll_pane,msg.getText(),msg.getName(),nowAtime(),msg.getName().equals(NICKNAME),false);
+                else if(msg.getTextAdmin().equals("Image")) {
+                    loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + msg.getImage() + ".jpg", new ImageView(MainActivity.this), false);
+                }
+                else if(msg.getTextAdmin().equals("msgImage")){
+                    View v= LayoutInflater.from(MainActivity.this).inflate(R.layout.message_text,null);
+                    TextView t=v.findViewById(R.id.textView);
+                    t.setText(msg.getText());
+                    loadMessageImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + msg.getImage() + ".jpg", v, false);
+                }
+
             }
         };
+
 
 //        Intent stopIntent=new Intent(this,BackgroundService.class);
 //        stopIntent.setAction("stop");
@@ -199,19 +213,21 @@ public class MainActivity extends Activity implements MessageHandler {
         btnSend.setOnClickListener(v -> {
 //            client1.sendMessage(textInput.getText().toString(),"msg");
             if(!textInput.getText().toString().equals("")) {
-                client1.sendMessage(textInput.getText().toString(),"msg");
                 if(sendBitmap!=null){
-                    sendFile();
+                    client1.sendMessage(textInput.getText().toString(),"msgImage",deleteToken);
+                    sendFile(true,textInput.getText().toString());
                     textInput.setText("");
                 }
                 else{
+                    client1.sendMessage(textInput.getText().toString(),"msg",null);
                     this.postMessageToDb(textInput.getText().toString());
                     textInput.setText("");
                 }
             }
             else {
                 if (sendBitmap != null) {
-                   sendFile();
+                    client1.sendMessage(textInput.getText().toString(),"Image",deleteToken);
+                   sendFile(false,null);
                 }
             }
         });
@@ -225,10 +241,7 @@ public class MainActivity extends Activity implements MessageHandler {
                             Intent intent = new Intent();
                             intent.setType("image/*");
                             intent.setAction(Intent.ACTION_PICK);
-                            // intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            //  intent.setFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
                             startActivityForResult(intent,1);
-
                         }
 
                         @Override
@@ -244,7 +257,6 @@ public class MainActivity extends Activity implements MessageHandler {
                     .check();
 
         });
-//        test.setImageDrawable(LoadImageFromWebOperations("https://wallbox.ru/wallpapers/main/201620/37da0352f83ab7b.jpg"));
         loadOnStart();
 
 
@@ -261,27 +273,46 @@ public class MainActivity extends Activity implements MessageHandler {
             sendFile=new File(realPath);
             System.out.println(realPath);
             try {
-                Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), contentURI);
 
-                Toast.makeText(MainActivity.this, "Image Saved!", Toast.LENGTH_SHORT).show();
-                imgView.setImageBitmap(bitmap);
-               // imgView.setVisibility(View.VISIBLE);
-                imageAttach.setVisibility(View.VISIBLE);
-                sendBitmap=bitmap;
-                new Thread(()->{
+                    Bitmap bitmap=null;
                     try {
-                        Request request=httpHelper.post(null,sendFile,"http://kurilkahttp.std-763.ist.mospolytech.ru/upload/img/temp");
-                        Response response = client.newCall(request).execute();
-                        deleteToken=response.body().string();
+                        bitmap= MediaStore.Images.Media.getBitmap(this.getContentResolver(), contentURI);
                     }
                     catch (Exception e){
                         e.printStackTrace();
                     }
-                }).start();
-                //TODO upload to temp
-            } catch (IOException e) {
+                    Toast.makeText(MainActivity.this, "Image Saved!", Toast.LENGTH_SHORT).show();
+
+                    imageAttach.setVisibility(View.VISIBLE);
+                    imgView.setVisibility(View.INVISIBLE);
+                    btnSend.setEnabled(false);
+                    sendBitmap=bitmap;
+
+
+                    AsyncFileTempUpload tempUpload=new AsyncFileTempUpload();
+                    tempUpload.setClient(client);
+                    tempUpload.setHttpHelper(httpHelper);
+                    tempUpload.setActivity(this);
+                    tempUpload.setBitmap(bitmap);
+                    tempUpload.execute(sendFile);
+
+                 //   deleteToken=tempUpload.get();
+                    //imgView.setImageBitmap(bitmap);
+//                attachProgress.setVisibility(View.VISIBLE);
+//                attachProgress.setIndeterminate(true);
+//                new Thread(()->{
+//                    try {
+//                        Request request=httpHelper.post(null,sendFile,"http://kurilkahttp.std-763.ist.mospolytech.ru/upload/img/temp");
+//                        Response response = client.newCall(request).execute();
+//                        deleteToken=response.body().string();
+//                    }
+//                    catch (Exception e){
+//                        e.printStackTrace();
+//                    }
+//                }).start();
+               // attachProgress.setVisibility(View.INVISIBLE);
+            } catch (Exception e){
                 e.printStackTrace();
-                Toast.makeText(MainActivity.this, "Failed!", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -303,26 +334,14 @@ public class MainActivity extends Activity implements MessageHandler {
             }
         }
     }
-    private void sendFile(){
+    private void sendFile(boolean withText,String text){
         imageAttach.setVisibility(View.GONE);
-        new Thread(() -> {
-            try {
-                Map<String,String> postData=new HashMap<>();
-                postData.put("token",deleteToken);
-                postData.put("name",NICKNAME);
-                postData.put("message",textInput.getText().toString());
-                Request request=httpHelper.post(postData,null,"http://kurilkahttp.std-763.ist.mospolytech.ru/upload/img");
-                Response response = client.newCall(request).execute();
-                String responseStr=response.body().string();
-                if(responseStr.equals("file not found"))
-                    System.out.println("NOT FOUND");
-                else
-                    loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + responseStr + ".jpg",new ImageView(this),false);
-                sendBitmap=null;
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }).start();
+        AsyncUploadFile uploadFile=new AsyncUploadFile();
+        uploadFile.setClient(client);
+        uploadFile.setContext(this);
+        uploadFile.setHttpHelper(httpHelper);
+        uploadFile.execute(deleteToken,NICKNAME,textInput.getText().toString());
+        sendBitmap=null;
     }
 
     public String bitmapToBase64(Bitmap bitmap){
@@ -415,47 +434,26 @@ public class MainActivity extends Activity implements MessageHandler {
 
     }
 
-    public void loadEmptyImages(String imgName){
-        ImageView newImg=new ImageView(this);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dpToPx(150),dpToPx(200));
-        params.gravity=Gravity.END;
-        params.setMargins(0, 40, 20, 10);
-        newImg.setLayoutParams(params);
-        newImg.setImageDrawable(getResources().getDrawable(R.drawable.img_background));
-        scroll_pane.addView(newImg);
-        loadedImgs.put(imgName,newImg);
-        scrollDown();
-    }
+
 
     public void loadImage(String url,ImageView newImg,boolean isFirstLoad){
         AsyncLoadImg asyncLoadImg=new AsyncLoadImg();
         asyncLoadImg.setImgView(newImg);
+        asyncLoadImg.setV(null);
+        asyncLoadImg.setFirstLoad(isFirstLoad);
+        asyncLoadImg.execute(url);
+    }
+    public void loadMessageImage(String url,View v,boolean isFirstLoad){
+        AsyncLoadImg asyncLoadImg=new AsyncLoadImg();
+        asyncLoadImg.setImgView(null);
+        asyncLoadImg.setV(v);
         asyncLoadImg.setFirstLoad(isFirstLoad);
         asyncLoadImg.execute(url);
     }
 
-    public void newImageMessage(Drawable drawable,ImageView newImg,boolean isFirstLoad){
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dpToPx(150),dpToPx(200));
-        params.gravity=Gravity.END;
-        params.setMargins(0, 40, 20, 10);
-        newImg.setLayoutParams(params);
 
-        newImg.setImageDrawable(drawable);
-        newImg.setScaleType(ImageView.ScaleType.FIT_XY);
-        Bitmap tmp=((BitmapDrawable)newImg.getDrawable()).getBitmap();
-        newImg.setImageBitmap(ImageHelper.getRoundedCornerBitmap(tmp,30));
-        if(!isFirstLoad) {
-            scroll_pane.addView(newImg);
-            scrollDown();
-        }
-    }
 
-    public int dpToPx(int dp) {
-        float density = this.getResources()
-                .getDisplayMetrics()
-                .density;
-        return Math.round((float) dp * density);
-    }
+
 
 
     public Drawable LoadImageFromWebOperations(String url) {
@@ -562,9 +560,14 @@ public class MainActivity extends Activity implements MessageHandler {
     class AsyncLoadImg extends AsyncTask<String,Void, Drawable> {
 
         private ImageView imgView;
+        private View v;
         private boolean firstLoad;
         public void setImgView(ImageView imgView) {
             this.imgView = imgView;
+        }
+
+        public void setV(View v) {
+            this.v = v;
         }
 
         @Override
@@ -580,7 +583,10 @@ public class MainActivity extends Activity implements MessageHandler {
         @Override
         protected void onPostExecute(Drawable drawable) {
             super.onPostExecute(drawable);
-            newImageMessage(drawable,imgView,firstLoad);
+            if(v==null)
+                imageResolver.newImageMessage(drawable,imgView,firstLoad);
+            else if(imgView==null)
+                imageResolver.newTextImageMessage(drawable,v,firstLoad);
             //newImageMessage(drawable);
         }
 
@@ -617,8 +623,12 @@ public class MainActivity extends Activity implements MessageHandler {
                     String msg=gson.toJson(message,MessageServerResponse.class);
                     String a=msg;
                     if (message.getMessage().equals("") && !message.getImg().equals("")) {
-                        loadEmptyImages(message.getImg());
-                    } else {
+                        imageResolver.loadEmptyImages(message.getImg());
+                    }
+                    if(!message.getImg_message().equals("")&&!message.getImg().equals("")){
+                        imageResolver.newTextEmptyImageMessage(message.getImg(),message.getMessage());
+                    }
+                    else {
                         newMessage(scroll_pane, message.getMessage(), String.valueOf(message.getName()), nowAtime(), NICKNAME.equals(message.getName()), true);
                     }
                 }
@@ -626,6 +636,11 @@ public class MainActivity extends Activity implements MessageHandler {
                 Collections.reverse(alKeys);
                 for(String key:alKeys){
                     loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + key + ".jpg", loadedImgs.get(key),true);
+                }
+                List<String> alKeys1 = new ArrayList<>(loadedMessageImgs.keySet());
+                Collections.reverse(alKeys1);
+                for(String key:alKeys1){
+                    loadMessageImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + key + ".jpg", loadedMessageImgs.get(key),true);
                 }
             }
             catch (Exception e){

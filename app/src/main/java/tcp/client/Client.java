@@ -21,7 +21,7 @@ public class Client {
             rt.registerCallBack(caller);
             rt.start();
             wt=new WriteThread(socket,this);
-            sendMessage("connected","connected");
+            sendMessage("connected","connected",null);
             new Thread(()->{
                 while (socket.isConnected()) {
                     try {
@@ -29,7 +29,7 @@ public class Client {
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                    sendMessage("ping", "ping");
+                    sendMessage("ping", "ping",null);
                 }
             }).start();
             //wt.start();
@@ -40,13 +40,13 @@ public class Client {
         }
     }
 
-    public void sendMessage(String text,String admin){
+    public void sendMessage(String text,String admin,String image){
         //wt.sendMessage(new Message(text,this.username,admin));
-        wt.sendMessage(new Message(text,this.username,admin));
+        wt.sendMessage(new Message(text,this.username,admin,image));
     }
 
     public void disconnect(){
-        wt.sendMessage(new Message("disconnect",this.username,"disconnect"));
+        wt.sendMessage(new Message("disconnect",this.username,"disconnect",null));
     }
 
     public String getUsername() {
