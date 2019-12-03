@@ -193,6 +193,10 @@ public class MainActivity extends Activity implements MessageHandler {
                     View v= LayoutInflater.from(MainActivity.this).inflate(R.layout.message_text,null);
                     TextView t=v.findViewById(R.id.textView);
                     t.setText(msg.getText());
+                    TextView nickname=v.findViewById(R.id.name);
+                    nickname.setText(msg.getName());
+                    TextView time=v.findViewById(R.id.time);
+                    time.setText(nowAtime());
                     loadMessageImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + msg.getImage() + ".jpg", v, false);
                 }
 
@@ -338,7 +342,6 @@ public class MainActivity extends Activity implements MessageHandler {
         imageAttach.setVisibility(View.GONE);
         AsyncUploadFile uploadFile=new AsyncUploadFile();
         uploadFile.setClient(client);
-        uploadFile.setContext(this);
         uploadFile.setHttpHelper(httpHelper);
         uploadFile.execute(deleteToken,NICKNAME,textInput.getText().toString());
         sendBitmap=null;
@@ -626,7 +629,7 @@ public class MainActivity extends Activity implements MessageHandler {
                         imageResolver.loadEmptyImages(message.getImg());
                     }
                     if(!message.getImg_message().equals("")&&!message.getImg().equals("")){
-                        imageResolver.newTextEmptyImageMessage(message.getImg(),message.getMessage());
+                        imageResolver.newTextEmptyImageMessage(message.getImg(),message.getMessage(),message.getName(),nowAtime());
                     }
                     else {
                         newMessage(scroll_pane, message.getMessage(), String.valueOf(message.getName()), nowAtime(), NICKNAME.equals(message.getName()), true);
