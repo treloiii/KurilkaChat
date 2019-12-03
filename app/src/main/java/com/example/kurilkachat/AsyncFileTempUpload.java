@@ -4,6 +4,8 @@ import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.view.View;
 
+import com.bumptech.glide.Glide;
+
 import java.io.File;
 
 import http.HttpHelper;
@@ -17,6 +19,7 @@ public class AsyncFileTempUpload extends AsyncTask<File,Boolean,String> {
     private HttpHelper httpHelper;
     private MainActivity activity;
     private Bitmap bitmap;
+    private File sendFile;
 
     public void setActivity(MainActivity activity) {
         this.activity = activity;
@@ -36,6 +39,7 @@ public class AsyncFileTempUpload extends AsyncTask<File,Boolean,String> {
     @Override
     protected String doInBackground(File... files) {
         publishProgress(false);
+        sendFile=files[0];
         try {
             Request request=httpHelper.post(null,files[0],"http://kurilkahttp.std-763.ist.mospolytech.ru/upload/img/temp");
             Response response = client.newCall(request).execute();
@@ -57,7 +61,11 @@ public class AsyncFileTempUpload extends AsyncTask<File,Boolean,String> {
         }
         else {
             activity.attachProgress.setVisibility(View.INVISIBLE);
-            activity.imgView.setImageBitmap(bitmap);
+            if(bitmap!=null)
+                activity.imgView.setImageBitmap(bitmap);
+            else{
+                Glide.with(activity).load(sendFile).into(activity.imgView);
+            }
             activity.imgView.setVisibility(View.VISIBLE);
 
         }

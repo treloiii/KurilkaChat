@@ -7,6 +7,7 @@ public class Client {
     private int port;
     private String username;
     private WriteThread wt;
+    private Socket socket;
 
     public Client(String hostname,int port,String username){
         this.hostname=hostname;
@@ -16,7 +17,7 @@ public class Client {
 
    public void listenToServer(MessageHandler caller){
         try{
-            Socket socket=new Socket(hostname,port);
+            socket=new Socket(hostname,port);
             ReadThread rt=new ReadThread(socket,this);
             rt.registerCallBack(caller);
             rt.start();
@@ -40,6 +41,9 @@ public class Client {
         }
     }
 
+    public boolean isConnected(){
+        return socket.isConnected();
+    }
     public void sendMessage(String text,String admin,String image){
         //wt.sendMessage(new Message(text,this.username,admin));
         wt.sendMessage(new Message(text,this.username,admin,image));

@@ -10,6 +10,7 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -36,6 +37,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.core.content.FileProvider;
+
 import com.bumptech.glide.Glide;
 import com.google.gson.Gson;
 import com.karumi.dexter.Dexter;
@@ -54,6 +57,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -80,7 +84,7 @@ public class MainActivity extends Activity implements MessageHandler {
     public LinearLayout scroll_pane,imageAttach;
     public WebsocketClientEndpoint clientEndPoint;
     public OkHttpClient client;
-    public Button btnSend,btnAttachFile;
+    public Button btnSend,btnAttachFile,btnAttachPhoto;
     public TextView sostoyanie,navbar;
     public ScrollView scroll;
     public EditText textInput;
@@ -126,6 +130,7 @@ public class MainActivity extends Activity implements MessageHandler {
         imgView=findViewById(R.id.imgView);
         test=findViewById(R.id.test);
         btnAttachFile=findViewById(R.id.btnSendFile);
+        btnAttachPhoto=findViewById(R.id.btnSendPhoto);
         textInput=findViewById(R.id.textInput);
         scroll=findViewById(R.id.scroll);
         sostoyanie=findViewById(R.id.sostoyanie);
@@ -176,33 +181,6 @@ public class MainActivity extends Activity implements MessageHandler {
         };
         textInput.addTextChangedListener(tw);
 
-        mHandler = new Handler(Looper.getMainLooper()) {
-            @Override
-            public void handleMessage(Message message) {
-                System.out.println(message.obj.toString());
-                tcp.client.Message msg=(tcp.client.Message) message.obj;
-                if(msg.getTextAdmin().equals("textInput"))
-                    setTyping(msg.getName());
-                else if(msg.getTextAdmin().equals("textOver"))
-                    setUnTyping();
-                else if(msg.getTextAdmin().equals("msg"))
-                    newMessage(scroll_pane,msg.getText(),msg.getName(),nowAtime(),msg.getName().equals(NICKNAME),false);
-                else if(msg.getTextAdmin().equals("Image")) {
-                    loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + msg.getImage() + ".jpg", new ImageView(MainActivity.this),msg.getName().equals(NICKNAME), false);
-                }
-                else if(msg.getTextAdmin().equals("msgImage")){
-                    View v= LayoutInflater.from(MainActivity.this).inflate(R.layout.message_text,null);
-                    TextView t=v.findViewById(R.id.textView);
-                    t.setText(msg.getText());
-                    TextView nickname=v.findViewById(R.id.name);
-                    nickname.setText(msg.getName());
-                    TextView time=v.findViewById(R.id.time);
-                    time.setText(nowAtime());
-                    loadMessageImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + msg.getImage() + ".jpg", v,msg.getName().equals(NICKNAME), false);
-                }
-
-            }
-        };
 
 
 //        Intent stopIntent=new Intent(this,BackgroundService.class);
@@ -218,7 +196,7 @@ public class MainActivity extends Activity implements MessageHandler {
         btnSend.setOnClickListener(v -> {
 //            client1.sendMessage(textInput.getText().toString(),"msg");
             if(!textInput.getText().toString().equals("")) {
-                if(sendBitmap!=null){
+                if(sendFile!=null){
                     client1.sendMessage(textInput.getText().toString(),"msgImage",deleteToken);
                     sendFile(true,textInput.getText().toString());
                     textInput.setText("");
@@ -230,7 +208,7 @@ public class MainActivity extends Activity implements MessageHandler {
                 }
             }
             else {
-                if (sendBitmap != null) {
+                if (sendFile != null) {
                     client1.sendMessage(textInput.getText().toString(),"Image",deleteToken);
                    sendFile(false,null);
                 }
@@ -260,13 +238,11 @@ public class MainActivity extends Activity implements MessageHandler {
                         }
                     })
                     .check();
-//            Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-//            if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-//                startActivityForResult(takePictureIntent, 1);
-//            }
-
         });
-        loadOnStart();
+        btnAttachPhoto.setOnClickListener(v->{
+            dispatchTakePictureIntent();
+        });
+        //loadOnStart();
 
 
 
@@ -276,18 +252,21 @@ public class MainActivity extends Activity implements MessageHandler {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         System.out.println(requestCode);
-        if (data != null) {
-            Uri contentURI = data.getData();
-            String realPath=getRealPathFromURI(this,contentURI);
-            sendFile=new File(realPath);
-            System.out.println(realPath);
-            try {
+        System.out.println(data);
+        if (requestCode==1) {
 
-                    Bitmap bitmap=null;
+            if (data != null) {
+
+                Uri contentURI = data.getData();
+                String realPath = getRealPathFromURI(this, contentURI);
+                System.out.println(realPath);
+                sendFile = new File(realPath);
+                System.out.println(realPath);
+                try {
+                    Bitmap bitmap = null;
                     try {
-                        bitmap= MediaStore.Images.Media.getBitmap(this.getContentResolver(), contentURI);
-                    }
-                    catch (Exception e){
+                        bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), contentURI);
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
                     Toast.makeText(MainActivity.this, "Image Saved!", Toast.LENGTH_SHORT).show();
@@ -295,37 +274,77 @@ public class MainActivity extends Activity implements MessageHandler {
                     imageAttach.setVisibility(View.VISIBLE);
                     imgView.setVisibility(View.INVISIBLE);
                     btnSend.setEnabled(false);
-                    sendBitmap=bitmap;
+                    sendBitmap = bitmap;
 
 
-                    AsyncFileTempUpload tempUpload=new AsyncFileTempUpload();
+                    AsyncFileTempUpload tempUpload = new AsyncFileTempUpload();
                     tempUpload.setClient(client);
                     tempUpload.setHttpHelper(httpHelper);
                     tempUpload.setActivity(this);
                     tempUpload.setBitmap(bitmap);
                     tempUpload.execute(sendFile);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+            }
+        }
+        else if(requestCode==2){
+            sendFile = new File(currentPhotoPath);
+            imageAttach.setVisibility(View.VISIBLE);
+            imgView.setVisibility(View.INVISIBLE);
+            btnSend.setEnabled(false);
 
-                 //   deleteToken=tempUpload.get();
-                    //imgView.setImageBitmap(bitmap);
-//                attachProgress.setVisibility(View.VISIBLE);
-//                attachProgress.setIndeterminate(true);
-//                new Thread(()->{
-//                    try {
-//                        Request request=httpHelper.post(null,sendFile,"http://kurilkahttp.std-763.ist.mospolytech.ru/upload/img/temp");
-//                        Response response = client.newCall(request).execute();
-//                        deleteToken=response.body().string();
-//                    }
-//                    catch (Exception e){
-//                        e.printStackTrace();
-//                    }
-//                }).start();
-               // attachProgress.setVisibility(View.INVISIBLE);
-            } catch (Exception e){
-                e.printStackTrace();
+            AsyncFileTempUpload tempUpload = new AsyncFileTempUpload();
+            tempUpload.setClient(client);
+            tempUpload.setHttpHelper(httpHelper);
+            tempUpload.setActivity(this);
+            tempUpload.setBitmap(null);
+            tempUpload.execute(sendFile);
+
+        }
+       // }
+    }
+
+    String currentPhotoPath;
+
+    private void dispatchTakePictureIntent() {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        // Ensure that there's a camera activity to handle the intent
+        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+            // Create the File where the photo should go
+            File photoFile = null;
+            try {
+                photoFile = createImageFile();
+            } catch (IOException e) {
+              e.printStackTrace();
+            }
+            // Continue only if the File was successfully created
+            if (photoFile != null) {
+                Uri photoURI = FileProvider.getUriForFile(this,
+                        "com.example.kurilkachat",
+                        photoFile);
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+              //  takePictureIntent.setData(photoURI);
+                startActivityForResult(takePictureIntent, 2);
             }
         }
     }
 
+    private File createImageFile() throws IOException {
+        // Create an image file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        String imageFileName = "JPEG_" + timeStamp + "_";
+        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        File image = File.createTempFile(
+                imageFileName,  /* prefix */
+                ".jpg",         /* suffix */
+                storageDir      /* directory */
+        );
+
+        // Save a file: path for use with ACTION_VIEW intents
+        currentPhotoPath = image.getAbsolutePath();
+        return image;
+    }
     private String getRealPathFromURI(Context context, Uri contentUri) {
         Cursor cursor = null;
         try {
@@ -349,7 +368,7 @@ public class MainActivity extends Activity implements MessageHandler {
         uploadFile.setClient(client);
         uploadFile.setHttpHelper(httpHelper);
         uploadFile.execute(deleteToken,NICKNAME,textInput.getText().toString());
-        sendBitmap=null;
+        sendFile=null;
     }
 
     public String bitmapToBase64(Bitmap bitmap){
@@ -473,8 +492,8 @@ public class MainActivity extends Activity implements MessageHandler {
 
     @Override
     protected void onResume() {
-//        scroll_pane.removeAllViews();
-
+     //   scroll_pane.removeAllViews();
+        loadOnStart();
         super.onResume();
     }
 
@@ -501,6 +520,33 @@ public class MainActivity extends Activity implements MessageHandler {
             message = mHandler.obtainMessage(0, s);
             message.sendToTarget();
         }
+        mHandler = new Handler(Looper.getMainLooper()) {
+            @Override
+            public void handleMessage(Message message) {
+                System.out.println(message.obj.toString());
+                tcp.client.Message msg=(tcp.client.Message) message.obj;
+                if(msg.getTextAdmin().equals("textInput"))
+                    setTyping(msg.getName());
+                else if(msg.getTextAdmin().equals("textOver"))
+                    setUnTyping();
+                else if(msg.getTextAdmin().equals("msg"))
+                    newMessage(scroll_pane,msg.getText(),msg.getName(),nowAtime(),msg.getName().equals(NICKNAME),false);
+                else if(msg.getTextAdmin().equals("Image")) {
+                    loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + msg.getImage() + ".jpg", new ImageView(MainActivity.this),msg.getName().equals(NICKNAME), false);
+                }
+                else if(msg.getTextAdmin().equals("msgImage")){
+                    View v= LayoutInflater.from(MainActivity.this).inflate(R.layout.message_text,null);
+                    TextView t=v.findViewById(R.id.textView);
+                    t.setText(msg.getText());
+                    TextView nickname=v.findViewById(R.id.name);
+                    nickname.setText(msg.getName());
+                    TextView time=v.findViewById(R.id.time);
+                    time.setText(nowAtime());
+                    loadMessageImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + msg.getImage() + ".jpg", v,msg.getName().equals(NICKNAME), false);
+                }
+
+            }
+        };
 
     }
 
@@ -590,7 +636,7 @@ public class MainActivity extends Activity implements MessageHandler {
                     if(!message.getImg_message().equals("")&&!message.getImg().equals("")){
                         imageResolver.newTextEmptyImageMessage(message.getImg(),message.getMessage(),message.getName(),nowAtime(),message.getName().equals(NICKNAME));
                     }
-                    else {
+                    if(message.getImg().equals("")&&!message.getMessage().equals("")) {
                         newMessage(scroll_pane, message.getMessage(), String.valueOf(message.getName()), nowAtime(), NICKNAME.equals(message.getName()), true);
                     }
                 }

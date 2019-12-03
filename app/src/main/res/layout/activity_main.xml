@@ -176,9 +176,18 @@
             android:background="@drawable/round_attach_file_white_48"
             android:translationY="10dp"/>
 
+        <Button
+            android:id="@+id/btnSendPhoto"
+            android:layout_width="35dp"
+            android:layout_height="35dp"
+            android:layout_marginTop="2dp"
+            android:layout_weight="1"
+            android:background="@drawable/baseline_photo_camera_white_48"
+            android:translationY="10dp" />
+
         <EditText
             android:id="@+id/textInput"
-            android:layout_width="0dp"
+            android:layout_width="240dp"
             android:layout_height="match_parent"
             android:layout_gravity="bottom"
             android:layout_weight="1"

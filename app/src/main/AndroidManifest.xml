@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.VIBRATE"/>
 <!--    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>-->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="18" />
     <uses-feature android:name="android.hardware.camera"
         android:required="true" />
 
@@ -21,6 +23,15 @@
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true"
         >
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.example.kurilkachat"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"></meta-data>
+        </provider>
         <service
             android:name=".BackgroundService"
             android:enabled="true"
