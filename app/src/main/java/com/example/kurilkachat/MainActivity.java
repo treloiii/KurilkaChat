@@ -36,6 +36,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.google.gson.Gson;
 import com.karumi.dexter.Dexter;
 import com.karumi.dexter.PermissionToken;
@@ -440,18 +441,12 @@ public class MainActivity extends Activity implements MessageHandler {
 
 
     public void loadImage(String url,ImageView newImg,boolean isFirstLoad){
-        AsyncLoadImg asyncLoadImg=new AsyncLoadImg();
-        asyncLoadImg.setImgView(newImg);
-        asyncLoadImg.setV(null);
-        asyncLoadImg.setFirstLoad(isFirstLoad);
-        asyncLoadImg.execute(url);
+        Glide.with(MainActivity.this).load(url).into(newImg);
+        imageResolver.newImageMessage(null,newImg,isFirstLoad);
     }
     public void loadMessageImage(String url,View v,boolean isFirstLoad){
-        AsyncLoadImg asyncLoadImg=new AsyncLoadImg();
-        asyncLoadImg.setImgView(null);
-        asyncLoadImg.setV(v);
-        asyncLoadImg.setFirstLoad(isFirstLoad);
-        asyncLoadImg.execute(url);
+        Glide.with(MainActivity.this).load(url).into((ImageView)v.findViewById(R.id.test));
+        imageResolver.newTextImageMessage(null,v,isFirstLoad);
     }
 
 
@@ -559,44 +554,6 @@ public class MainActivity extends Activity implements MessageHandler {
         sostoyanie.setText("");
     }
 
-
-    class AsyncLoadImg extends AsyncTask<String,Void, Drawable> {
-
-        private ImageView imgView;
-        private View v;
-        private boolean firstLoad;
-        public void setImgView(ImageView imgView) {
-            this.imgView = imgView;
-        }
-
-        public void setV(View v) {
-            this.v = v;
-        }
-
-        @Override
-        protected Drawable doInBackground(String... strings) {
-            return LoadImageFromWebOperations(strings[0]);
-        }
-
-        @Override
-        protected void onProgressUpdate(Void... values) {
-            super.onProgressUpdate(values);
-        }
-
-        @Override
-        protected void onPostExecute(Drawable drawable) {
-            super.onPostExecute(drawable);
-            if(v==null)
-                imageResolver.newImageMessage(drawable,imgView,firstLoad);
-            else if(imgView==null)
-                imageResolver.newTextImageMessage(drawable,v,firstLoad);
-            //newImageMessage(drawable);
-        }
-
-        public void setFirstLoad(boolean firstLoad) {
-            this.firstLoad = firstLoad;
-        }
-    }
     class AsyncLoadOnStart extends AsyncTask<Void,Void,Response>{
 
         @Override

@@ -1,8 +1,6 @@
 package com.example.kurilkachat;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -27,31 +25,10 @@ public class ImageResolver {
         params.setMargins(0, 40, 20, 10);
 
 
-        newImg.setImageDrawable(drawable);
+       // newImg.setImageDrawable(drawable);
         newImg.setScaleType(ImageView.ScaleType.FIT_XY);
-        Bitmap tmp=((BitmapDrawable)newImg.getDrawable()).getBitmap();
-        newImg.setImageBitmap(ImageHelper.getRoundedCornerBitmap(tmp,dpToPx(10)));
-        BitmapDrawable bd=(BitmapDrawable) drawable;
-
-//        int imgHeight=bd.getBitmap().getHeight();
-//        int imgWidth=bd.getBitmap().getWidth();
-//        int rate=imgHeight-imgWidth;
-//
-//        if(rate==0){
-//            params.height = dpToPx(250);
-//            params.width = dpToPx(250);
-//        }
-//        if(rate<0){
-//            params.height=dpToPx(150);
-//            params.width=dpToPx(250);
-//        }
-//        if(rate>0){
-//            params.height=dpToPx(250);
-//            params.width=dpToPx(150);
-//        }
-
-
-//        System.out.println(rate);
+//        Bitmap tmp=((BitmapDrawable)newImg.getDrawable()).getBitmap();
+//        newImg.setImageBitmap(ImageHelper.getRoundedCornerBitmap(tmp,dpToPx(10)));
         newImg.setLayoutParams(params);
         if(!isFirstLoad) {
             activity.scroll_pane.addView(newImg);
@@ -79,34 +56,13 @@ public class ImageResolver {
     }
     public void newTextImageMessage(Drawable drawable,View v,boolean isFirstLoad){
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dpToPx(150),dpToPx(200));
-//        ConstraintLayout.LayoutParams params1 = new ConstraintLayout.LayoutParams(dpToPx(150),dpToPx(200));
         params.height= LinearLayout.LayoutParams.WRAP_CONTENT;
         params.gravity=Gravity.END;
         params.setMargins(0, 40, 20, 10);
 
         ImageView one=v.findViewById(R.id.test);
-        one.setImageDrawable(drawable);
-        BitmapDrawable bd=(BitmapDrawable) drawable;
-
-        int imgHeight=bd.getBitmap().getHeight();
-        int imgWidth=bd.getBitmap().getWidth();
-        int rate=imgHeight-imgWidth;
-
-//        if(rate==0){
-//            params1.height = dpToPx(300);
-//            params.width = dpToPx(300);
-//        }
-//        if(rate<0){
-//            params1.height=dpToPx(200);
-//            params.width=dpToPx(300);
-//        }
-//        if(rate>0){
-//            params1.height=dpToPx(300);
-//            params.width=dpToPx(200);
-//        }
-
+       // one.setImageDrawable(drawable);
         v.setLayoutParams(params);
-//        one.setLayoutParams(params1);
         if(!isFirstLoad) {
             activity.scroll_pane.addView(v);
             activity.scrollDown();
