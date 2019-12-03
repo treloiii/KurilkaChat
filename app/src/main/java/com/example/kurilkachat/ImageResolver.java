@@ -19,10 +19,16 @@ public class ImageResolver {
         this.context = context;
     }
 
-    public void newImageMessage(Drawable drawable, ImageView newImg, boolean isFirstLoad){
+    public void newImageMessage(Drawable drawable, ImageView newImg,boolean isMy, boolean isFirstLoad){
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dpToPx(150),dpToPx(200));
-        params.gravity= Gravity.END;
-        params.setMargins(0, 40, 20, 10);
+        if(isMy) {
+            params.gravity = Gravity.END;
+            params.setMargins(0, 40, 20, 10);
+        }
+        else {
+            params.gravity = Gravity.START;
+            params.setMargins(20, 40, 0, 10);
+        }
 
 
        // newImg.setImageDrawable(drawable);
@@ -35,12 +41,18 @@ public class ImageResolver {
             activity.scrollDown();
         }
     }
-    public void newTextEmptyImageMessage(String imageName,String message,String name,String time){
+    public void newTextEmptyImageMessage(String imageName,String message,String name,String time,boolean isMy){
         View v= LayoutInflater.from(context).inflate(R.layout.message_text,null);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dpToPx(150),dpToPx(200));
         params.height= LinearLayout.LayoutParams.WRAP_CONTENT;
-        params.gravity=Gravity.END;
-        params.setMargins(0, 40, 20, 10);
+        if(isMy) {
+            params.gravity = Gravity.END;
+            params.setMargins(0, 40, 20, 10);
+        }
+        else {
+            params.gravity = Gravity.START;
+            params.setMargins(20, 40, 0, 10);
+        }
         v.setLayoutParams(params);
         ImageView one=v.findViewById(R.id.test);
         one.setImageDrawable(context.getDrawable(R.drawable.img_background));
@@ -51,14 +63,20 @@ public class ImageResolver {
         TextView timeTv=v.findViewById(R.id.time);
         timeTv.setText(time);
         activity.scroll_pane.addView(v);
-        activity.loadedMessageImgs.put(imageName,v);
+        activity.loadedMessageImgs.put(imageName+":"+name,v);
         activity.scrollDown();
     }
-    public void newTextImageMessage(Drawable drawable,View v,boolean isFirstLoad){
+    public void newTextImageMessage(Drawable drawable,View v,boolean isMy,boolean isFirstLoad){
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dpToPx(150),dpToPx(200));
         params.height= LinearLayout.LayoutParams.WRAP_CONTENT;
-        params.gravity=Gravity.END;
-        params.setMargins(0, 40, 20, 10);
+        if(isMy) {
+            params.gravity = Gravity.END;
+            params.setMargins(0, 40, 20, 10);
+        }
+        else {
+            params.gravity = Gravity.START;
+            params.setMargins(20, 40, 0, 10);
+        }
 
         ImageView one=v.findViewById(R.id.test);
        // one.setImageDrawable(drawable);
@@ -68,15 +86,22 @@ public class ImageResolver {
             activity.scrollDown();
         }
     }
-    public void loadEmptyImages(String imgName){
+    public void loadEmptyImages(String name,String imgName,boolean isMy){
         ImageView newImg=new ImageView(context);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dpToPx(150),dpToPx(200));
-        params.gravity=Gravity.END;
+        if(isMy) {
+            params.gravity = Gravity.END;
+            params.setMargins(0, 40, 20, 10);
+        }
+        else {
+            params.gravity = Gravity.START;
+            params.setMargins(20, 40, 0, 10);
+        }
         params.setMargins(0, 40, 20, 10);
         newImg.setLayoutParams(params);
         newImg.setImageDrawable(context.getDrawable(R.drawable.img_background));
         activity.scroll_pane.addView(newImg);
-        activity.loadedImgs.put(imgName,newImg);
+        activity.loadedImgs.put(imgName+":"+name,newImg);
         activity.scrollDown();
     }
 

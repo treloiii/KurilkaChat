@@ -85,8 +85,8 @@ public class MainActivity extends Activity implements MessageHandler {
     public ScrollView scroll;
     public EditText textInput;
     public ImageView imgView,test;
-    //protected static final  String NICKNAME="ПоЖиЛоЙйй";
-    protected static final  String NICKNAME="Гришин";
+    protected static final  String NICKNAME="ПоЖиЛоЙйй";
+    //protected static final  String NICKNAME="Гришин";
     //private IWebSocketConnectionHandler wsh;
     WebSocketClient c = null;
     private final WebSocketConnection  socket = new WebSocketConnection();
@@ -188,7 +188,7 @@ public class MainActivity extends Activity implements MessageHandler {
                 else if(msg.getTextAdmin().equals("msg"))
                     newMessage(scroll_pane,msg.getText(),msg.getName(),nowAtime(),msg.getName().equals(NICKNAME),false);
                 else if(msg.getTextAdmin().equals("Image")) {
-                    loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + msg.getImage() + ".jpg", new ImageView(MainActivity.this), false);
+                    loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + msg.getImage() + ".jpg", new ImageView(MainActivity.this),msg.getName().equals(NICKNAME), false);
                 }
                 else if(msg.getTextAdmin().equals("msgImage")){
                     View v= LayoutInflater.from(MainActivity.this).inflate(R.layout.message_text,null);
@@ -198,7 +198,7 @@ public class MainActivity extends Activity implements MessageHandler {
                     nickname.setText(msg.getName());
                     TextView time=v.findViewById(R.id.time);
                     time.setText(nowAtime());
-                    loadMessageImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + msg.getImage() + ".jpg", v, false);
+                    loadMessageImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + msg.getImage() + ".jpg", v,msg.getName().equals(NICKNAME), false);
                 }
 
             }
@@ -260,6 +260,10 @@ public class MainActivity extends Activity implements MessageHandler {
                         }
                     })
                     .check();
+//            Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+//            if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+//                startActivityForResult(takePictureIntent, 1);
+//            }
 
         });
         loadOnStart();
@@ -440,13 +444,13 @@ public class MainActivity extends Activity implements MessageHandler {
 
 
 
-    public void loadImage(String url,ImageView newImg,boolean isFirstLoad){
+    public void loadImage(String url,ImageView newImg,boolean isMy,boolean isFirstLoad){
         Glide.with(MainActivity.this).load(url).into(newImg);
-        imageResolver.newImageMessage(null,newImg,isFirstLoad);
+        imageResolver.newImageMessage(null,newImg,isMy,isFirstLoad);
     }
-    public void loadMessageImage(String url,View v,boolean isFirstLoad){
+    public void loadMessageImage(String url,View v,boolean isMy,boolean isFirstLoad){
         Glide.with(MainActivity.this).load(url).into((ImageView)v.findViewById(R.id.test));
-        imageResolver.newTextImageMessage(null,v,isFirstLoad);
+        imageResolver.newTextImageMessage(null,v,isMy,isFirstLoad);
     }
 
 
@@ -580,13 +584,11 @@ public class MainActivity extends Activity implements MessageHandler {
                 MessageServerResponse[] messages = gson.fromJson(response.body().string(), MessageServerResponse[].class);
                 for (int i = 0; i < messages.length; i++) {
                     MessageServerResponse message = messages[i];
-                    String msg=gson.toJson(message,MessageServerResponse.class);
-                    String a=msg;
                     if (message.getMessage().equals("") && !message.getImg().equals("")) {
-                        imageResolver.loadEmptyImages(message.getImg());
+                        imageResolver.loadEmptyImages(message.getName(),message.getImg(),message.getName().equals(NICKNAME));
                     }
                     if(!message.getImg_message().equals("")&&!message.getImg().equals("")){
-                        imageResolver.newTextEmptyImageMessage(message.getImg(),message.getMessage(),message.getName(),nowAtime());
+                        imageResolver.newTextEmptyImageMessage(message.getImg(),message.getMessage(),message.getName(),nowAtime(),message.getName().equals(NICKNAME));
                     }
                     else {
                         newMessage(scroll_pane, message.getMessage(), String.valueOf(message.getName()), nowAtime(), NICKNAME.equals(message.getName()), true);
@@ -595,13 +597,18 @@ public class MainActivity extends Activity implements MessageHandler {
                 List<String> alKeys = new ArrayList<>(loadedImgs.keySet());
                 Collections.reverse(alKeys);
                 for(String key:alKeys){
-                    loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + key + ".jpg", loadedImgs.get(key),true);
+                    String img=key.split(":")[0];
+                    String name=key.split(":")[1];
+                    loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + img + ".jpg", loadedImgs.get(key),NICKNAME.equals(name),true);
                 }
                 List<String> alKeys1 = new ArrayList<>(loadedMessageImgs.keySet());
                 Collections.reverse(alKeys1);
                 for(String key:alKeys1){
-                    loadMessageImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + key + ".jpg", loadedMessageImgs.get(key),true);
+                    String img=key.split(":")[0];
+                    String name=key.split(":")[1];
+                    loadMessageImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + img + ".jpg", loadedMessageImgs.get(key),NICKNAME.equals(name),true);
                 }
+
             }
             catch (Exception e){
                 e.printStackTrace();
