@@ -89,8 +89,8 @@ public class MainActivity extends Activity implements MessageHandler {
     public ScrollView scroll;
     public EditText textInput;
     public ImageView imgView,test;
-    protected static final  String NICKNAME="ПоЖиЛоЙйй";
-    //protected static final  String NICKNAME="Гришин";
+    //protected static final  String NICKNAME="Leshando585";
+    protected static final  String NICKNAME="Гришин";
     //private IWebSocketConnectionHandler wsh;
     WebSocketClient c = null;
     private final WebSocketConnection  socket = new WebSocketConnection();
@@ -189,6 +189,33 @@ public class MainActivity extends Activity implements MessageHandler {
 
 
 
+        mHandler = new Handler(Looper.getMainLooper()) {
+            @Override
+            public void handleMessage(Message message) {
+                System.out.println(message.obj.toString());
+                tcp.client.Message msg=(tcp.client.Message) message.obj;
+                if(msg.getTextAdmin().equals("textInput"))
+                    setTyping(msg.getName());
+                else if(msg.getTextAdmin().equals("textOver"))
+                    setUnTyping();
+                else if(msg.getTextAdmin().equals("msg"))
+                    newMessage(scroll_pane,msg.getText(),msg.getName(),nowAtime(),msg.getName().equals(NICKNAME),false);
+                else if(msg.getTextAdmin().equals("Image")) {
+                    loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + msg.getImage() + ".jpg", new ImageView(MainActivity.this),msg.getName().equals(NICKNAME), false);
+                }
+                else if(msg.getTextAdmin().equals("msgImage")){
+                    View v= LayoutInflater.from(MainActivity.this).inflate(R.layout.message_text,null);
+                    TextView t=v.findViewById(R.id.textView);
+                    t.setText(msg.getText());
+                    TextView nickname=v.findViewById(R.id.name);
+                    nickname.setText(msg.getName());
+                    TextView time=v.findViewById(R.id.time);
+                    time.setText(nowAtime());
+                    loadMessageImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + msg.getImage() + ".jpg", v,msg.getName().equals(NICKNAME), false);
+                }
+
+            }
+        };
 
 
 
@@ -520,34 +547,6 @@ public class MainActivity extends Activity implements MessageHandler {
             message = mHandler.obtainMessage(0, s);
             message.sendToTarget();
         }
-        mHandler = new Handler(Looper.getMainLooper()) {
-            @Override
-            public void handleMessage(Message message) {
-                System.out.println(message.obj.toString());
-                tcp.client.Message msg=(tcp.client.Message) message.obj;
-                if(msg.getTextAdmin().equals("textInput"))
-                    setTyping(msg.getName());
-                else if(msg.getTextAdmin().equals("textOver"))
-                    setUnTyping();
-                else if(msg.getTextAdmin().equals("msg"))
-                    newMessage(scroll_pane,msg.getText(),msg.getName(),nowAtime(),msg.getName().equals(NICKNAME),false);
-                else if(msg.getTextAdmin().equals("Image")) {
-                    loadImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + msg.getImage() + ".jpg", new ImageView(MainActivity.this),msg.getName().equals(NICKNAME), false);
-                }
-                else if(msg.getTextAdmin().equals("msgImage")){
-                    View v= LayoutInflater.from(MainActivity.this).inflate(R.layout.message_text,null);
-                    TextView t=v.findViewById(R.id.textView);
-                    t.setText(msg.getText());
-                    TextView nickname=v.findViewById(R.id.name);
-                    nickname.setText(msg.getName());
-                    TextView time=v.findViewById(R.id.time);
-                    time.setText(nowAtime());
-                    loadMessageImage("http://kurilkahttp.std-763.ist.mospolytech.ru/static/" + msg.getImage() + ".jpg", v,msg.getName().equals(NICKNAME), false);
-                }
-
-            }
-        };
-
     }
 
 
